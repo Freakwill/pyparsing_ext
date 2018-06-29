@@ -162,7 +162,6 @@ class Wordx(pp.Token):
 
 
     def parseImpl(self, instring, loc=0, doActions=True):
-
         if not self.initChars(instring[loc]):
             raise _Exception(instring, loc, self.errmsg, self)
 
@@ -276,13 +275,12 @@ def keyRange(start=None, end=None, key=ord, *arg, **kwargs):
     key [ord]: function (just use ordRange)
     start, end [None]: number or other type that can be compared'''
     if end is None:
+        func = lambda x: start <= key(x)
+    else:
         if start is None:
             func = lambda x: key(x) <= end
         else:
             func = lambda x: start <= key(x) <= end
-    else:
-        func = lambda x: start <= key(x)
-        # if start is None: func = lambda x: True # deprecated
     return Wordx(func, *arg, **kwargs)
 
 def ordRange(start=None, end=None, *arg, **kwargs):
@@ -294,10 +292,9 @@ def CJK(*arg, **kwargs):
     # Chinese Japanese Korean
     return ordRange(0x4E00, 0x9FD5, *arg, **kwargs)
 
-def kangxi(*arg, **kwargs):
+def chinese(*arg, **kwargs):
     # chinese
-    return ordRange(0x2F00, 0x2FDF, *arg, **kwargs)
-chinese = kangxi
+    return ordRange(start=0x4E00, end=0x9FA5, *arg, **kwargs)
 
 def hiragana(*arg, **kwargs):
     # japanese
@@ -541,10 +538,10 @@ def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
 class BaseAction:
     '''Base class for parsing action classes
     '''
-    def __init__(self, tokens, *args, **kwargs):  # instring, loc,
+    def __init__(self, instring='', loc=0, tokens=[], *args, **kwargs):
         self.tokens = tokens
-        #self.instring = instring
-        #self.loc = loc
+        self.instring = instring
+        self.loc = loc
 
     def has(self, name):
         return name in self.tokens
