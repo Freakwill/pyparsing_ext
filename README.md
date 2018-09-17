@@ -3,19 +3,33 @@ Introduction
 
 Abstract
 ----------
-extension of pyparsing.
+Extension of pyparsing. You can easily build your own languages. :v:
 
 Keywords
 ----------
-Functional Programming, Type Testing
+* PEG
 
-Feature:
+* parser
+
+
+## Awesome Feature:
 
     1. mixedExpression
+    2. build languages (see example)
 
 Requirements
 -----------
 pyparsing
+
+
+
+## Structure
+
+core: basic token classes
+
+actions: classes for parsing actions
+
+utils: some useful tools
 
 Content
 =========
@@ -62,3 +76,12 @@ s = '''
 '''
 print(enumeratedItems().parseString(s))
 ```
+
+
+
+## build your own languages
+
+```
+import pyparsing_ext.pylang.example
+```
+
