@@ -23,6 +23,12 @@ pyparsing
 
 
 
+## Download
+
+`pip install pyparsing_ext`
+
+
+
 ## Structure
 
 core: basic token classes
@@ -81,7 +87,16 @@ print(enumeratedItems().parseString(s))
 
 ## build your own languages
 
-```
+```python
 import pyparsing_ext.pylang.example
+
+'''Example 1:
+|-1| -> ('|', '|')(-(1))
+Example 2:
+parse:
+ x=|-1|;
+y=x*2; 
+result:
+{'x': Decimal('1'), 'y': Decimal('2')}'''
 ```
 

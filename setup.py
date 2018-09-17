@@ -30,7 +30,7 @@ AUTHOR_EMAIL = "songcwzjut@163.com"
  
 URL = "https://github.com/Freakwill/pyparsing_ext"
  
-VERSION = "0.2.0" # update the version before uploading
+VERSION = "0.2.1" # update the version before uploading
  
 LICENSE = "MIT"
 
