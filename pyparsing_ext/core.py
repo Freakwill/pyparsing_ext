@@ -7,14 +7,14 @@ Require: pyparsing
 Path:
 Author: William
 '''
+
 import sys
 import re
-import functools
 
 import pyparsing as pp
 
 from pyparsing_ext.actions import *
-
+from pyparsing_ext.oplists import *
 
 '''notations:
 pe: ParserElement
@@ -29,17 +29,17 @@ _Enhance = pp.ParseElementEnhance
 _Exception = pp.ParseException
 
 
-def scanFile(pe, file, *args, **kwargs):
-    """Execute the parse expression on the given file or filename.
-       If a filename is specified (instead of a file object),
-       the entire file is opened, read, and closed before parsing.
-    """
-    if isinstance(file, str):
-        with open(file) as f:
-            file_contents = f.read()
-    else: # file is a file object
-        file_contents = file.read()
-    return pe.scanString(file_contents, *args, **kwargs)
+# def scanFile(pe, file, *args, **kwargs):
+#     """Execute the parse expression on the given file or filename.
+#        If a filename is specified (instead of a file object),
+#        the entire file is opened, read, and closed before parsing.
+#     """
+#     if isinstance(file, str):
+#         with open(file) as f:
+#             file_contents = f.read()
+#     else: # file is a file object
+#         file_contents = file.read()
+#     return pe.scanString(file_contents, *args, **kwargs)
 
 _whitepattern = re.compile(r'\A[ \n\t]+\Z')
 
@@ -390,13 +390,20 @@ class TokenConverterx(_Enhance):
         else:
             return self.converter(instring, loc, tokenlist)
 
+
 class Meanwhile(pp.ParseExpression):
     """ Meanwhile([A, B, ...])
-       example:
+       
+       Example:
        A = Meanwhile([IDEN, ~('_'+ DIGIT)]) # IDEN / ('_'+ DIGIT)
        to parse identitiers such as _a123 excluding _123
+       Equivalently,
+       A = Meanwhile()
+       A.append(IDEN)
+       A.exclude('_'+ DIGIT)  # A / '_'+ DIGIT
     """
-    def __init__(self, exprs):
+
+    def __init__(self, exprs=[]):
         super(Meanwhile, self).__init__(exprs)
         self.mayReturnEmpty = all(e.mayReturnEmpty for e in self.exprs)
         self.setWhitespaceChars(self.exprs[0].whiteChars)
@@ -416,6 +423,8 @@ class Meanwhile(pp.ParseExpression):
         return self.append(other)
 
     def exclude(self, other):
+        if isinstance(other, str):
+            other = pp.ParserElement._literalStringClass(other)
         return self.append(~other)
 
     def __truediv__(self, other):
@@ -428,12 +437,12 @@ class Meanwhile(pp.ParseExpression):
             if not e.mayReturnEmpty:
                 break
 
-    def __str__( self ):
+    def __str__(self):
         if hasattr(self, "name"):
             return self.name
 
         if self.strRepr is None:
-            self.strRepr = str(self.exprs[0]) + "{%s}"%(" ".join(str(e) for e in self.exprs[1:]))
+            self.strRepr = "%s{%s}"%(str(self.exprs[0]), " ".join(str(e) for e in self.exprs[1:]))
 
         return self.strRepr
 
@@ -526,39 +535,15 @@ def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
         if iswhite(ch1):
             ch1 = pp.Literal(ch1).leaveWhitespace()
         else:
-            ch1=pp.Literal(ch1)
+            ch1 = pp.Literal(ch1)
     if isinstance(ch2, str):
         if ch2 is '':
             raise Exception('make sure ch2 is not empty')
         if iswhite(ch2):
             ch2 = pp.Literal(ch2).leaveWhitespace()
         else:
-            ch2=pp.Literal(ch2)
+            ch2 = pp.Literal(ch2)
     return pp.delimitedList(pp.Group(pp.delimitedList(baseExpr, ch1.suppress())), ch2.suppress())
-
-
-
-arithOplist = [('**', 2, pp.opAssoc.RIGHT, RightBinaryOperatorAction),
-    (pp.oneOf('+ - ~'), 1, pp.opAssoc.RIGHT, UnaryOperatorAction),
-    (pp.oneOf('* / // %'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.oneOf('+ -'), 2, pp.opAssoc.LEFT, BinaryOperatorAction)]
-
-
-pyOplist = arithOplist + [('&', 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    ('^', 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    ('|', 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.Keyword('is') | pp.Keyword('is not'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.Keyword('in') | pp.Keyword('not in'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.oneOf('< <= > >= == !='), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.Keyword('not'), 1, pp.opAssoc.RIGHT, UnaryOperatorAction),
-    (pp.Keyword('and'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.Keyword('or'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    ((pp.Keyword('if'), pp.Keyword('else')), 3, pp.opAssoc.RIGHT, TernaryOperatorAction)]
-
-# logic:
-logicOplist = [(pp.Keyword('not'), 1, pp.opAssoc.RIGHT, UnaryOperatorAction),
-    (pp.Keyword('and'), 2, pp.opAssoc.LEFT, BinaryOperatorAction),
-    (pp.Keyword('or'), 2, pp.opAssoc.LEFT, BinaryOperatorAction)]
 
 
 # need to be improved
@@ -578,27 +563,28 @@ class MixedExpression(_Enhance):
 
     def enableIndex(self, action=IndexOpAction):
         # start:stop:step
-        self.expr = EXP = pp.Forward()
+        EXP = pp.Forward()
         SLICE = pp.Optional(EXP)('start') + COLON + pp.Optional(EXP)('stop') + pp.Optional(COLON + pp.Optional(EXP)('step'))
         indexop = LBRACK + (SLICE('slice') | EXP('index')) + RBRACK
         indexop.setParseAction(action)
         self.opList.insert(0, indexop)
-        self.expr <<= pp.operatorPrecedence(self.baseExpr, self.opList, self.lpar, self.rpar)
+        self.expr <<= pp.operatorPrecedence(EXP, self.opList, self.lpar, self.rpar)
 
     def enableCall(self, action=CallOpAction):
-        self.expr = EXP = pp.Forward()
+        EXP = self.expr
         KWARG = IDEN + pp.Suppress('=') + EXP
         # STAR = pp.Suppress('*') + EXP, DBLSTAR = pp.Suppress('**') + EXP
         callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG))('kwargs') + RPAREN
-        indexop = LBRACK + (SLICE('slice') | EXP('index')) + RBRACK
         callop.setParseAction(action)
         self.opList.insert(0, callop)
         self.expr <<= pp.operatorPrecedence(self.baseExpr, self.opList, self.lpar, self.rpar)
 
     def enableDot(self, action=DotOpAction):
+        EXP = self.expr
         dotop = pp.Suppress('.') + IDEN('attr')
         dotop.setParseAction(action)
         self.opList.insert(0, dotop)
+        self.expr <<= pp.operatorPrecedence(self.baseExpr, self.opList, self.lpar, self.rpar)
 
 
     def enableAll(self, actions=None):
@@ -615,7 +601,8 @@ def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpa
     example:
     def func(EXP):
         return pp.Group('<' + EXP + ',' + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
-    EXP = mixedExpression(baseExpr, func, arithOplist)'''
+    EXP = mixedExpression(baseExpr, func, arithOplist)
+    '''
     
     EXP = pp.Forward()
     if flag:
@@ -624,7 +611,7 @@ def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpa
         indexop = LBRACK + (SLICE('slice') | EXP('index')) + RBRACK
         indexop.setParseAction(IndexOpAction) # handle with x[y]
         KWARG = IDEN + pp.Suppress('=') + EXP
-        # STAR = pp.Suppress('*') + EXP, DBLSTAR = pp.Suppress('**') + EXP
+        # STAR = pp.Suppress('*') + EXP; DBLSTAR = pp.Suppress('**') + EXP
         callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG))('kwargs') + RPAREN
         callop.setParseAction(CallOpAction)  # handle with f(x)
         dotop = pp.Suppress('.') + IDEN('attr')

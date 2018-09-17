@@ -1,7 +1,10 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 
+
 import pyparsing as pp
+
+from pyparsing_ext import *
 
 # advanced functitons
 def isatomic(pe):
@@ -96,3 +99,4 @@ def expand(pe, aslist = False):
 #         if isatomic(expr):
 #             return expr + pp.FollowedBy(lookahead(other))
 #         return lookahead(expr + pp.FollowedBy(lookahead(other)))
+
