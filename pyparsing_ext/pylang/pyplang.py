@@ -151,7 +151,7 @@ class GrammarParser:
         M = funcExpr | tupleExpr | baseExpr | LPAREN + EXP + RPAREN
         indexExpr = M('variable') + pp.OneOrMore(pp.Suppress('[') + EXP + pp.Suppress(']'))('index')
         indexExpr.setParseAction(IndexAction)
-        EXP <<= pp.infixNotation(indexExpr | M, optable2oplist(self.operators))
+        EXP <<= pp.operatorPrecedence(indexExpr | M, optable2oplist(self.operators))
         self.expression = EXP
         # EXP = mixedExpression(baseExpr, funcExpr, True, optable2oplist(self.operators))
 
@@ -325,7 +325,8 @@ class ProgrammingLanguage(Language):
         if 'loading' in ret:
             for path in ret.loading:
                 self.executeFile(path.strip())
-        ret.execute(self.calculator)
+        ret = ret[-1]
+        ret.execute(self.language.calculator)
 
     def executeFile(self, filename):
         ret = self.parseFile(filename)
@@ -333,7 +334,7 @@ class ProgrammingLanguage(Language):
             for path in ret.loading:
                 self.executeFile(path.strip())
         ret = ret[-1]
-        ret.execute(self.calculator)
+        ret.execute(self.language.calculator)
 
     def __call__(self, s):
         self.execute(s)
