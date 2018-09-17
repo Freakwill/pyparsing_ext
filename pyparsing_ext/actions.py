@@ -21,6 +21,9 @@ class BaseAction:
     def __getitem__(self, key):
         return getattr(self.tokens, key)
 
+    def has(self, key):
+        return getattr(self.tokens, key)
+
     def __len__(self):
         return len(self.tokens)
 
@@ -143,12 +146,18 @@ class OperatorAction(FunctionAction):
     pass
 
 class InfixOperatorAction(OperatorAction):
-    # action class for operators used in operatorPrecedence
-    pass
+    # action class for operators used in infixNotation
+    def __init__(self, instring='', loc=0, tokens=[]):
+        '''
+        The result of infixNotation is a list of list [[...]], hence
+        we take self.tokens = tokens[0]
+        '''
+        super(InfixOperatorAction, self).__init__(instring, loc, tokens)
+        self.tokens = tokens[0]
 
 
 class UnaryOperatorAction(InfixOperatorAction):
-    # action class for unary operators used in operatorPrecedence
+    # action class for unary operators used in infixNotation
     def __init__(self, instring='', loc=0, tokens=[]):
         super(UnaryOperatorAction, self).__init__(instring, loc, tokens)
         self.function, self.args = self.tokens[0], (self.tokens[1],)
@@ -162,7 +171,7 @@ class RightUnaryOperatorAction(UnaryOperatorAction):
     pass
 
 class LeftUnaryOperatorAction(UnaryOperatorAction):
-    '''action class for unary operators used in operatorPrecedence
+    '''action class for unary operators used in infixNotation
     such as x*, x' '''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(UnaryOperatorAction, self).__init__(instring, loc, tokens)
@@ -192,7 +201,7 @@ class ICDAction(LeftUnaryOperatorAction):
 
 
 class BinaryOperatorAction(InfixOperatorAction):
-    # action class for binary operators used in operatorPrecedence
+    # action class for binary operators used in infixNotation
     def __init__(self, instring='', loc=0, tokens=[]):
         super(BinaryOperatorAction, self).__init__(instring, loc, tokens)
         self.args = self.tokens[0::2]
@@ -276,7 +285,7 @@ class CompareAction(BinaryOperatorAction):
 
 
 class TernaryOperatorAction(InfixOperatorAction):
-    # action class for ternary operators used in operatorPrecedence
+    # action class for ternary operators used in infixNotation
     def __init__(self, instring='', loc=0, tokens=[]):
         super(TernaryOperatorAction, self).__init__(instring, loc, tokens)
         tokens = tokens[0]
@@ -291,7 +300,7 @@ class TernaryOperatorAction(InfixOperatorAction):
 
 
 class LambdaAction(BaseAction):
-    # action class for lambda expression used in operatorPrecedence
+    # action class for lambda expression used in infixNotation
     def __init__(self, instring='', loc=0, tokens=[]):
         super(LambdaAction, self).__init__(instring, loc, tokens)
         self.args, self.expr = tokens.args, tokens.expression
@@ -313,8 +322,8 @@ class LambdaAction(BaseAction):
 
 class IndexAction(BaseAction):
     # action class for index expression
-    def __init__(self, tokens):
-        super(IndexAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(IndexAction, self).__init__(instring, loc, tokens)
         self.index = tokens.index
         self.variable = tokens.variable
 
@@ -330,10 +339,11 @@ class IndexAction(BaseAction):
             ret = ret[int(ind.eval(calculator))]
         return ret
 
+
 class SliceExprAction(BaseAction):
     # action class for slice expression
-    def __init__(self, tokens):
-        super(SliceExprAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(SliceExprAction, self).__init__(instring, loc, tokens)
         self.slice = tokens.slice
         self.variable = tokens.variable
 
@@ -349,12 +359,13 @@ class SliceExprAction(BaseAction):
             ret = ret[int(ind.eval(calculator))]
         return ret
 
+
 class QuantifierAction(OperatorAction):
     '''action class for quantifiers
     forall x A(x) where quantifier = forall, varaibles = (x,), operand (of the quantifier) = A(x)
     '''
-    def __init__(self, tokens):
-        super(QuantifierAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(QuantifierAction, self).__init__(instring, loc, tokens)
         self.quantifier, self.variables = self.tokens.quantifier, self.tokens.variables
         self.operand = self.tokens[-1]
 
@@ -367,8 +378,8 @@ class QuantifierAction(OperatorAction):
 # tuple, set
 class TupleAction(FunctionAction):
     # action class for atomic term
-    def __init__(self, tokens):
-        super(TupleAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(TupleAction, self).__init__(instring, loc, tokens)
         self.function = 'tuple'
         self.args = tokens.items
 
@@ -378,8 +389,8 @@ class TupleAction(FunctionAction):
 
 class SetAction(FunctionAction):
     # action class for set
-    def __init__(self, tokens):
-        super(TupleAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(SetAction, self).__init__(instring, loc, tokens)
         self.function = 'set'
         self.args = tokens.items
 
@@ -387,12 +398,24 @@ class SetAction(FunctionAction):
         return set(arg.eval(calculator) for arg in self.args)
 
 
+class DictAction(FunctionAction):
+    # action class for set
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(DictAction, self).__init__(instring, loc, tokens)
+        self.function = 'set'
+        self.keys = tokens.keys
+        self.values = tokens.values
+
+    def eval(self, calculator):
+        return dict(arg.eval(calculator) for arg in self.args)
+
+
 # More advanced actions
 # atomic expression
 class AtomAction(BaseAction):
     # action class for atomic term
-    def __init__(self, tokens):
-        super(AtomAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(AtomAction, self).__init__(instring, loc, tokens)
         self.content = tokens[0]
 
     def __eq__(self, other):
@@ -407,11 +430,14 @@ class AtomAction(BaseAction):
     def sexpr(self):
         return str(self.content)
 
+    def eval(self, calculator):
+        return self.content
+
 
 class VariableAction(AtomAction):
     # action class for variable
-    def __init__(self, tokens):
-        super(VariableAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(VariableAction, self).__init__(instring, loc, tokens)
 
     def __hash__(self):
         return hash(self.content)
@@ -425,8 +451,6 @@ class VariableAction(AtomAction):
 
 class ConstantAction(AtomAction):
     # action class for constant
-    def __init__(self, tokens):
-        super(ConstantAction, self).__init__(tokens)
 
     def eval(self, calculator):
         return calculator.dict_[self.content]
@@ -437,8 +461,6 @@ class NoneAction(AtomAction):
 
 class NumberAction(AtomAction):
     # action class for number
-    def __init__(self, tokens):
-        super(NumberAction, self).__init__(tokens)
 
     def eval(self, calculator):
         import decimal
@@ -446,14 +468,12 @@ class NumberAction(AtomAction):
 
 class IntegerAction(AtomAction):
     # action class for integer
-    def __init__(self, tokens):
-        super(IntegerAction, self).__init__(tokens)
 
     def eval(self, calculator):
         return int(self.content)
 
 
-class BoolAction(AtomAction):
+class BooleAction(IntegerAction):
     # action class for boolean value
     pass
 
@@ -461,18 +481,14 @@ class BoolAction(AtomAction):
 class StringAction(AtomAction):
     # action class for string
 
-    def eval(self, calculator):
-        return self.content
-
     def __repr__(self):
         return '"%s"'%self.content
 
 
-
 class LetAction(BaseAction):
-    # action class for unary operator used in operatorPrecedence
-    def __init__(self, tokens):
-        super(LetAction, self).__init__(tokens)
+    # action class for let-expression
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(LetAction, self).__init__(instring, loc, tokens)
         self.args, self.values, self.expr = tokens.args[::2], tokens.args[1::2], tokens.expression
         self.letKeyword = 'let'
 
@@ -508,6 +524,7 @@ class ControlAction(CommandAction):
     # action for contral flow
     pass
 
+
 class BreakAction(ControlAction):
     def execute(self, calculator):
         calculator.control = 'break'
@@ -519,8 +536,17 @@ class ContinueAction(ControlAction):
 
 
 class ReturnAction(ControlAction):
-    def __init__(self, tokens):
-        super(ReturnAction, self).__init__(tokens)
+    '''Action for return statement
+    
+    It is an action for return statement `return x`, x will saved in `.retval` of tokens.
+    Executing the statement makes the calculator in the control state "return", and
+    the return value will be saved in the calculator.
+    
+    Extends:
+        ControlAction
+    '''
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(ReturnAction, self).__init__(instring, loc, tokens)
         self.retval = tokens.retval
 
     def __repr__(self):
@@ -533,12 +559,14 @@ class ReturnAction(ControlAction):
         calculator.control = 'return'
         calculator.retval = self.retval.eval(calculator)
 
+
 class PassAction(CommandAction):
     pass
 
+
 class PrintAction(CommandAction):
-    def __init__(self, tokens):
-        super(PrintAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(PrintAction, self).__init__(instring, loc, tokens)
         self.args = tokens.args
 
     def __repr__(self):
@@ -549,12 +577,12 @@ class PrintAction(CommandAction):
 
     def execute(self, calculator):
         for arg in self.args:
-            print(arg.eval(calculator), end='')
+            print(arg.eval(calculator), end=' ')
         print()
 
 class DeleteAction(CommandAction):
-    def __init__(self, tokens):
-        super(DeleteAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(DeleteAction, self).__init__(instring, loc, tokens)
         self.args = tokens.args
 
     def __repr__(self):
@@ -569,8 +597,8 @@ class DeleteAction(CommandAction):
 
 
 class EmbedAction(CommandAction):
-    def __init__(self, tokens):
-        super(EmbedAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(EmbedAction, self).__init__(instring, loc, tokens)
         self.code = tokens.code
 
     def __repr__(self):
@@ -601,22 +629,22 @@ class EmbedAction(CommandAction):
 
 class AssignmentAction(CommandAction):
     '''action for assignment like x = expr'''
-    def __init__(self, tokens):
-        super(AssignmentAction, self).__init__(tokens)
-        self.variable = tokens.variable.content
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(AssignmentAction, self).__init__(instring, loc, tokens)
+        self.variable = tokens.variable
         self.expression = tokens.expression
 
     def execute(self, calculator):
         value = self.expression.eval(calculator)
-        calculator.update({self.variable:value})
+        calculator.update({self.variable.content:value})
 
     def __repr__(self):
         return '%s = %s'%(self.variable, self.expression)
 
 class IfAction(CommandAction):
     '''action for if statement'''
-    def __init__(self, tokens):
-        super(IfAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(IfAction, self).__init__(instring, loc, tokens)
         self.condition = tokens.condition
         self.program = tokens.program
 
@@ -628,12 +656,8 @@ class IfAction(CommandAction):
     def __repr__(self):
         return 'if %s {%s}'%(self.condition, self.program)
 
-class WhileAction(CommandAction):
+class WhileAction(IfAction):
     '''action for while statement'''
-    def __init__(self, tokens):
-        super(WhileAction, self).__init__(tokens)
-        self.condition = tokens.condition
-        self.program = tokens.program
 
     def execute(self, calculator):
         ML = calculator.maxloop
@@ -657,8 +681,8 @@ class WhileAction(CommandAction):
 
 class IfelseAction(CommandAction):
     '''action for if-elif-else statement'''
-    def __init__(self, tokens):
-        super(IfelseAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(IfelseAction, self).__init__(instring, loc, tokens)
         self.conditions = tokens.conditions[:]
         self.programs = tokens.programs[:]
         self.elseprogram = tokens.elseprogram
@@ -672,13 +696,32 @@ class IfelseAction(CommandAction):
             self.elseprogram.execute(calculator)
 
 
-class ForAction(CommandAction):
-    pass
+class ForAction(WhileAction):
+    def execute(self, calculator):
+        ML = calculator.maxloop
+        for _ in self.range_.eval(calculator):
+            calculator.update({self.loopingVar: _})
+            if ML == 0:
+                raise Exception('reach the maximal looping')
+            else:
+                ML -= 1
+            self.program.execute(calculator)
+            if calculator.control == 'break':
+                calculator.control = None
+                break
+            elif calculator.control == 'continue':
+                calculator.control = None
+                continue
+            elif calculator.control == 'return':
+                break
+
+    def __repr__(self):
+        return 'for %s in %s {%s}'%(self.loopingVar, self.range_, self.program)
 
 class DefAction(CommandAction):
-    ''''''
-    def __init__(self, tokens):
-        super(DefAction, self).__init__(tokens)
+    '''Action for definition of functions'''
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(DefAction, self).__init__(instring, loc, tokens)
         if self.has('function'):
             self.function = tokens.function.content
         else:
@@ -703,8 +746,8 @@ class DefAction(CommandAction):
 
 class ProgramSequenceAction(CommandAction):
     '''action for program; program; program...'''
-    def __init__(self, tokens):
-        super(ProgramSequenceAction, self).__init__(tokens)
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(ProgramSequenceAction, self).__init__(instring, loc, tokens)
         self.program = tokens[:]
 
     def execute(self, calculator):

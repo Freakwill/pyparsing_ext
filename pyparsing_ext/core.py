@@ -559,7 +559,7 @@ class MixedExpression(_Enhance):
         self.opList = opList
         self.lpar = lpar
         self.rpar = rpar
-        self.expr = pp.operatorPrecedence(baseExpr, opList, lpar, rpar)
+        self.expr = pp.infixNotation(baseExpr, opList, lpar, rpar)
 
     def enableIndex(self, action=IndexOpAction):
         # start:stop:step
@@ -568,7 +568,7 @@ class MixedExpression(_Enhance):
         indexop = LBRACK + (SLICE('slice') | EXP('index')) + RBRACK
         indexop.setParseAction(action)
         self.opList.insert(0, indexop)
-        self.expr <<= pp.operatorPrecedence(EXP, self.opList, self.lpar, self.rpar)
+        self.expr <<= pp.infixNotation(EXP, self.opList, self.lpar, self.rpar)
 
     def enableCall(self, action=CallOpAction):
         EXP = self.expr
@@ -577,14 +577,14 @@ class MixedExpression(_Enhance):
         callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG))('kwargs') + RPAREN
         callop.setParseAction(action)
         self.opList.insert(0, callop)
-        self.expr <<= pp.operatorPrecedence(self.baseExpr, self.opList, self.lpar, self.rpar)
+        self.expr <<= pp.infixNotation(self.baseExpr, self.opList, self.lpar, self.rpar)
 
     def enableDot(self, action=DotOpAction):
         EXP = self.expr
         dotop = pp.Suppress('.') + IDEN('attr')
         dotop.setParseAction(action)
         self.opList.insert(0, dotop)
-        self.expr <<= pp.operatorPrecedence(self.baseExpr, self.opList, self.lpar, self.rpar)
+        self.expr <<= pp.infixNotation(self.baseExpr, self.opList, self.lpar, self.rpar)
 
 
     def enableAll(self, actions=None):
@@ -624,9 +624,9 @@ def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpa
             block = f | baseExpr
         else:  # func is callable
             block = func(EXP) | baseExpr
-        EXP <<= pp.operatorPrecedence(block, opList, lpar, rpar)
+        EXP <<= pp.infixNotation(block, opList, lpar, rpar)
     else:
-        EXP <<= pp.operatorPrecedence(baseExpr, opList, lpar, rpar)
+        EXP <<= pp.infixNotation(baseExpr, opList, lpar, rpar)
     return EXP
 
 
