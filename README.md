@@ -89,8 +89,9 @@ print(enumeratedItems().parseString(s))
 
 ```python
 import pyparsing_ext.pylang.example
-
-# Output
+```
+output:
+```C
 Example 1:
 |-1| -> ('|', '|')(-(1))
 Example 2:
@@ -108,4 +109,3 @@ z = 3
 see the dictionary of variables:
 {'x': Decimal('1'), 'y': Decimal('3'), 'z': 3}
 ```
-
