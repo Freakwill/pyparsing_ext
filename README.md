@@ -88,7 +88,8 @@ print(enumeratedItems().parseString(s))
 ## build your own languages
 
 ```python
-import pyparsing_ext.pylang.example
+import pyparsing_ext.pylang
+pyparsing_ext.pylang.example
 
 pyparsing_ext.pylang.example.smallPy.cmdline()  # in mode of command line
 ```
