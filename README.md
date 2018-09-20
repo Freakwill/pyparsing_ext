@@ -46,7 +46,7 @@ Classes::
     
     Wordx: powerful Word
     CharsNot: powerful CharsNotIn
-    LeadedBy: as FollowedBy
+    PrecededBy: as FollowedBy
     MeanWhile:
     LinenStart:
     
@@ -90,13 +90,22 @@ print(enumeratedItems().parseString(s))
 ```python
 import pyparsing_ext.pylang.example
 
-'''Example 1:
+# Output
+Example 1:
 |-1| -> ('|', '|')(-(1))
 Example 2:
-parse:
- x=|-1|;
-y=x*2; 
+parse source code:
+ 
+x=|-1|;  # absolute value
+y=x*2+1;
+if x == 1
+{z=[3.3_]; # the floor value
+}
+print "z =", z;
+ 
 result:
-{'x': Decimal('1'), 'y': Decimal('2')}'''
+z = 3 
+see the dictionary of variables:
+{'x': Decimal('1'), 'y': Decimal('3'), 'z': 3}
 ```
 
