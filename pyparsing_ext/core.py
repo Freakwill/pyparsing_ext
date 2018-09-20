@@ -27,6 +27,7 @@ char, chr: character
 # for short
 _Enhance = pp.ParseElementEnhance
 _Exception = pp.ParseException
+_Token = pp.Token
 
 
 # def scanFile(pe, file, *args, **kwargs):
@@ -52,7 +53,7 @@ def iswhite(s):
 # words
 IDEN = pp.pyparsing_common.identifier
 DIGIT = pp.pyparsing_common.integer
-WORD = pp.Word(pp.alphas+'-')
+WORD = pp.Word(pp.alphas, pp.alphas+'-')
 
 # punctuations
 DOT = pp.Literal('.')
@@ -82,9 +83,11 @@ STRING = pp.quotedString.setParseAction(pp.removeQuotes) | pp.QuotedString('"""'
 
 
 # subclass of Token
-class Escape(pp.Token):
-    r'''escape character
-    it matches \ in \latex instead of second \ in \\latex
+class Escape(_Token):
+    r'''Escape Token
+
+    It matches \ in \latex instead of second \ in \\latex.
+    The motivation of the token is to parse the commands in .tex files.
 '''
 
     def __init__(self, escChar='\\'):
@@ -107,15 +110,17 @@ class Escape(pp.Token):
         raise _Exception(instring, loc, self.errmsg, self)
 
 
-class EscapeRight(pp.Token):
-    '''escape character
+class EscapeRight(_Token):
+    '''
     it matches '}' in latex} instead of first '}' in latex}}
+
+    See also Escape
 '''
     def __init__(self, escChar='}'):
         super(EscapeRight, self).__init__()
         self.mayReturnEmpty = True
         self.mayIndexError = False
-        self.escChar = escChar  #len(escChar)==1
+        self.escChar = escChar  #  len(escChar)==1
         self.name = 'escChar(%s)'%escChar
         self.errmsg = "Expected " + self.name
 
@@ -131,15 +136,24 @@ class EscapeRight(pp.Token):
         raise _Exception(instring, loc, self.errmsg, self)
 
 
-class Wordx(pp.Token):
-    """extension of Word
-    like pyparsing.pWord, but initChars, bodyChars (=None) are both functions
-    use 'lambda x: x not in *' to exclude *
+class Wordx(_Token):
+    """Extension of Word
+
+    like pyparsing.Word, but initChars, bodyChars (=None) are both functions
+    use 'lambda x: x not in *' to exclude '*'
     use 'lambda x: True' to match any character
     example:
     Wordx(initChars=lambda x: x in {'a', 'b'}, bodyChars=lambda x:x in {'a', 'b', 'c'}) == (a|b)(a|b|c)*
     """
     def __init__(self, initChars, bodyChars=None, min=1, max=0, exact=0, asKeyword=False):
+        """
+        Arguments:
+            initChars {function: string -> bool} -- the condition of initial charactor
+        
+        Keyword Arguments:
+            bodyChars {function: string -> bool} -- the condition of body charactors (default: {None})
+            ......
+        """
         super(Wordx, self).__init__()
         self.initChars = initChars
         if bodyChars:
@@ -204,8 +218,11 @@ class Wordx(pp.Token):
         return self.strRepr
 
 
-class CharsNot(pp.Token):
+class CharsNot(_Token):
     """behaves like pyparsing.CharsNotIn but notChars is a function
+
+    See also:
+        Wordx
     """
     def __init__(self, notChars, min=1, max=0, exact=0):
         super(CharsNot, self).__init__()
@@ -242,7 +259,7 @@ class CharsNot(pp.Token):
 
         return loc, instring[start:loc]
 
-    def __str__(self ):
+    def __str__(self):
         try:
             return super(CharsNot, self).__str__()
         except:
@@ -254,7 +271,7 @@ class CharsNot(pp.Token):
         return self.strRepr
 
 
-class TestToken(pp.Token):
+class TestToken(_Token):
     # test token
     def __init__(self, test=None):
         super(TestToken, self).__init__()
@@ -274,9 +291,15 @@ class TestToken(pp.Token):
 
 # functions returning Wordx
 def keyRange(start=None, end=None, key=ord, *arg, **kwargs):
-    '''return Wordx in which the characters satisfy start<=key(x)<=end
-    key [ord]: function (just use ordRange)
-    start, end [None]: number or other type that can be compared'''
+    '''Range-like parser, more powerful then srange
+    
+    Keyword Arguments:
+        start, end {number or other type that can be compared}
+        key {function:charactor->number} (default: {ord})
+    
+    Returns:
+        Wordx whose characters satisfy start<=key(x)<=end
+    '''
     if end is None:
         func = lambda x: start <= key(x)
     else:
@@ -348,16 +371,24 @@ def chrRanges(ran, *arg, **kwargs):
 
 
 # subclass of ParserElementEnhance
-class LeadedBy(_Enhance):
+class PrecededBy(_Enhance):
     """
     Works as FollowedBy
 
-    Lookahead matching of the given parse expression.  C{LeadedBy}
+    Lookahead matching of the given parse expression.  C{PrecededBy}
     does not advance the parsing position within the input string, it only
     verifies that the specified parse expression matches at the current
-    position.  C{LeadedBy} always returns a null token list."""
+    position.  C{PrecededBy} always returns a null token list."""
     def __init__(self, expr, start=0, retreat=None):
-        super(LeadedBy, self).__init__(expr)
+        '''
+        Arguments:
+            expr -- a parse expression
+        
+        Keyword Arguments:
+            start {number} -- where it starts to search expr (default: {0})
+            retreat {[type]} -- when it is given, start = loc - retreat (default: {None})
+        '''
+        super(PrecededBy, self).__init__(expr)
         self.mayReturnEmpty = True
         self.start = start
         self.retreat = retreat
@@ -371,6 +402,64 @@ class LeadedBy(_Enhance):
             return loc, []
         else:
             raise _Exception(instring, loc, self.errmsg, self)
+
+
+class Meanwhile(pp.ParseExpression):
+    """Strings have to match all sub-expressions at the same time
+        Grammar:
+            Meanwhile([A, B, ...])
+       
+        Example:
+            A = Meanwhile([IDEN, ~('_'+ DIGIT)]) # IDEN % ('_'+ DIGIT)
+            to parse identifiers such as _a123 excluding _123
+            Equivalently,
+            A = Meanwhile()
+            A.append(IDEN)
+            A.exclude('_'+ DIGIT)  # <==> A % '_'+ DIGIT
+    """
+
+    def __init__(self, exprs=[]):
+        super(Meanwhile, self).__init__(exprs)
+        self.mayReturnEmpty = all(e.mayReturnEmpty for e in self.exprs)
+        self.setWhitespaceChars(self.exprs[0].whiteChars)
+        self.skipWhitespace = self.exprs[0].skipWhitespace
+        self.callPreparse = True
+
+    def parseImpl(self, instring, loc, doActions=True):
+        postloc, result = self.exprs[0]._parse(instring, loc, doActions)
+        for e in self.exprs[1:]:
+            if not e.matches(instring, loc):
+                raise _Exception(instring, len(instring), e.errmsg, self)
+        return postloc, result
+
+    # def append(self, other):
+    #     if isinstance(other, str):
+    #         other = pp.ParserElement._literalStringClass(other)
+    #     return self.exprs.append(other)
+
+    def __exclude(self, other):
+        if isinstance(other, str):
+            other = pp.ParserElement._literalStringClass(other)
+        return self.exprs.append(~other)
+
+    def __mod__(self, other):
+        return self.__exclude(other)
+
+    def checkRecursion(self, parseElementList):
+        subRecCheckList = parseElementList[:] + [self]
+        for e in self.exprs:
+            e.checkRecursion(subRecCheckList)
+            if not e.mayReturnEmpty:
+                break
+
+    def __str__(self):
+        if hasattr(self, "name"):
+            return self.name
+
+        if self.strRepr is None:
+            self.strRepr = "%s{%s}"%(str(self.exprs[0]), " ".join(str(e) for e in self.exprs[1:]))
+
+        return self.strRepr
 
 
 class TokenConverterx(_Enhance):
@@ -391,67 +480,13 @@ class TokenConverterx(_Enhance):
             return self.converter(instring, loc, tokenlist)
 
 
-class Meanwhile(pp.ParseExpression):
-    """ Meanwhile([A, B, ...])
-       
-       Example:
-       A = Meanwhile([IDEN, ~('_'+ DIGIT)]) # IDEN / ('_'+ DIGIT)
-       to parse identitiers such as _a123 excluding _123
-       Equivalently,
-       A = Meanwhile()
-       A.append(IDEN)
-       A.exclude('_'+ DIGIT)  # A / '_'+ DIGIT
-    """
-
-    def __init__(self, exprs=[]):
-        super(Meanwhile, self).__init__(exprs)
-        self.mayReturnEmpty = all(e.mayReturnEmpty for e in self.exprs)
-        self.setWhitespaceChars(self.exprs[0].whiteChars)
-        self.skipWhitespace = self.exprs[0].skipWhitespace
-        self.callPreparse = True
-
-    def parseImpl(self, instring, loc, doActions=True):
-        postloc, result = self.exprs[0]._parse(instring, loc, doActions)
-        for e in self.exprs[1:]:
-            if not e.matches(instring, loc):
-                raise _Exception(instring, len(instring), e.errmsg, self)
-        return postloc, result
-
-    def append(self, other):
-        if isinstance(other, str):
-            other = pp.ParserElement._literalStringClass(other)
-        return self.append(other)
-
-    def exclude(self, other):
-        if isinstance(other, str):
-            other = pp.ParserElement._literalStringClass(other)
-        return self.append(~other)
-
-    def __truediv__(self, other):
-        return self.append(~other)
-
-    def checkRecursion(self, parseElementList):
-        subRecCheckList = parseElementList[:] + [self]
-        for e in self.exprs:
-            e.checkRecursion(subRecCheckList)
-            if not e.mayReturnEmpty:
-                break
-
-    def __str__(self):
-        if hasattr(self, "name"):
-            return self.name
-
-        if self.strRepr is None:
-            self.strRepr = "%s{%s}"%(str(self.exprs[0]), " ".join(str(e) for e in self.exprs[1:]))
-
-        return self.strRepr
-
 class StrConverter(TokenConverterx):
     """Converte strings in the matching tokens."""
     def __init__(self, expr, savelist=False, mapping=None):
         # mapping: str -> str
         converter = lambda ins, loc, lst: list(map(mapping, lst)) if mapping is not None else None
         super(StrConverter, self).__init__(expr, savelist, converter=converter)
+
 
 class StripConverter(StrConverter):
     """Converte strings in the matching tokens."""
@@ -468,6 +503,7 @@ class DeleteConverter(StrConverter):
         mapping = lambda s: ''
         super(DeleteConverter, self).__init__(expr, savelist=False, mapping=mapping)
 
+
 class DictConverter(TokenConverterx):
     """Converte strings in the matching tokens."""
     def __init__(self, expr, savelist=False, dict_=None):
@@ -477,21 +513,23 @@ class DictConverter(TokenConverterx):
 
 
 class LinenStart(pp._PositionToken):
-    """Matches if current position is at the beginning of the n-th line within the parse string"""
+    """Matches if current position is at the beginning of the n-th line within the parse string
+    """
     def __init__(self, n=1):
-        super(LineStart,self).__init__()
-        self.setWhitespaceChars( ParserElement.DEFAULT_WHITE_CHARS.replace("\n","") )
+        super(LineStart, self).__init__()
+        self.setWhitespaceChars(ParserElement.DEFAULT_WHITE_CHARS.replace("\n",""))
         self.errmsg = "Expected start of the %d-th line"%n
         self.linen = n
 
     def preParse(self, instring, loc):
-        preloc = super(LinenStart,self).preParse(instring,loc)
+        preloc = super(LinenStart, self).preParse(instring, loc)
         if instring[preloc] == "\n":
             loc += 1
         return loc
 
     def parseImpl(self, instring, loc, doActions=True):
-        if loc==0 and self.linen==1 or instring[0:loc-1].count('\n')==self.linen-1 and  instring[loc-1]=="\n":
+        # at the beginning of the whole string or at the beginning of the n-th line
+        if loc==0 and self.linen==1 or instring[0:loc-1].count('\n')==self.linen-1 and instring[loc-1]=="\n":
             return loc, []
         raise ParseException(instring, loc, self.errmsg, self)
 
