@@ -89,6 +89,8 @@ print(enumeratedItems().parseString(s))
 
 ```python
 import pyparsing_ext.pylang.example
+
+pyparsing_ext.pylang.example.smallPy.cmdline()  # in mode of command line
 ```
 output:
 ```C
