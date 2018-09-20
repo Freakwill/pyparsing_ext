@@ -288,7 +288,8 @@ class ProgrammingGrammarParser(GrammarParser):
     def setComment(self, commentStyle='Python'):
         if not hasattr(self, 'program'):
             self.make_parser()
-        self.program.ignoreExprs.remove(self.comment)
+        if self.comment in self.program.ignoreExprs:
+            self.program.ignoreExprs.remove(self.comment)
         if commentStyle in {'Python', 'python'}:
             self.comment = pp.pythonStyleComment
         elif commentStyle in {'c', 'C'}:

@@ -22,8 +22,17 @@ pydict = {'len':len, 'abs':abs, 'min':min, 'max':max,'str':str,'sum':sum, 'tuple
 microDict.update(pydict)
 smallpyLanguage = ProgrammingLanguage(name="SmallPython", grammar=microGrammar, calculator=Calculator(dict_=microDict))
 
+
 print('Example 2:')
-code = 'x=|-1|;\ny=x*2;'
-print('parse:\n', code, '\nresult:')
+code = '''
+x=|-1|;  # absolute value
+y=x*2+1;
+if x == 1
+{z=[3.3_]; # the floor value
+}
+print "z =", z;
+'''
+print('parse source code:\n', code, '\nresult:')
 smallpyLanguage(code)
+print('see the dictionary of variables:')
 print(smallpyLanguage.calculator.context)
