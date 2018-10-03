@@ -371,38 +371,6 @@ def chrRanges(ran, *arg, **kwargs):
 
 
 # subclass of ParserElementEnhance
-class PrecededBy(_Enhance):
-    """
-    Works as FollowedBy
-
-    Lookahead matching of the given parse expression.  C{PrecededBy}
-    does not advance the parsing position within the input string, it only
-    verifies that the specified parse expression matches at the current
-    position.  C{PrecededBy} always returns a null token list."""
-    def __init__(self, expr, start=0, retreat=None):
-        '''
-        Arguments:
-            expr -- a parse expression
-        
-        Keyword Arguments:
-            start {number} -- where it starts to search expr (default: {0})
-            retreat {[type]} -- when it is given, start = loc - retreat (default: {None})
-        '''
-        super(PrecededBy, self).__init__(expr)
-        self.mayReturnEmpty = True
-        self.start = start
-        self.retreat = retreat
-
-    def parseImpl(self, instring, loc=0, doActions=True):
-        if self.retreat is None:
-            start = self.start
-        else:
-            start = loc - self.retreat
-        if (self.expr + stringEnd).searchString(instring[start:loc], maxMatches=1):
-            return loc, []
-        else:
-            raise _Exception(instring, loc, self.errmsg, self)
-
 
 class Meanwhile(pp.ParseExpression):
     """Strings have to match all sub-expressions at the same time
