@@ -142,7 +142,9 @@ class Wordx(_Token):
     like pyparsing.Word, but initChars, bodyChars (=None) are both functions
     use 'lambda x: x not in *' to exclude '*'
     use 'lambda x: True' to match any character
-    example:
+
+    Example:
+    ------
     Wordx(initChars=lambda x: x in {'a', 'b'}, bodyChars=lambda x:x in {'a', 'b', 'c'}) == (a|b)(a|b|c)*
     """
     def __init__(self, initChars, bodyChars=None, min=1, max=0, exact=0, asKeyword=False):
@@ -310,7 +312,15 @@ def keyRange(start=None, end=None, key=ord, *arg, **kwargs):
     return Wordx(func, *arg, **kwargs)
 
 def ordRange(start=None, end=None, *arg, **kwargs):
-    '''return Wordx in which the characters satisfy start<=ord(x)<=end'''
+    '''Special keyRange
+
+    return Wordx in which the characters satisfy start<=ord(x)<=end
+
+    Examples:
+    --------
+    >>> cjk = ordRange(0x4E00, 0x9FD5)
+    >>> cjk.parseString('我爱你, I love you') # => ['我爱你']
+    '''
     return keyRange(start, end, key=ord, *arg, **kwargs)
 
 # parse natural languages based on ordRange
@@ -345,23 +355,41 @@ def chrRange(start='', end=None, *arg, **kwargs):
 #     return ordRange(0x3100, 0x312F, *arg, **kwargs)
 
 def keyRanges(ran, key=ord, *arg, **kwargs):
-    # ran = (a,b,c,d) means two ranges a-b and c-d
-    # multi-range version of keyRange
+    '''Multi-range version of keyRange
+    
+    We can take ran several ranges, instead of just one in keyRange
+    
+    Arguments:
+        ran {tuple} -- ranges of key(x), see also keyRange
+                       (a, b, c, d) means (union of) two ranges a-b and c-d
+    
+    Keyword Arguments:
+        key {function} -- function from charactor to number (default: {ord})
+    
+    Returns:
+        Wordx
+    '''
+
     L = len(ran)    # L >= 1
-    if L%2 == 0:
-        func = lambda x: any(ran[k] <= ord(x) <= ran[k+1] for k in range(0, L//2, 2))
+    if L % 2 == 0:
+        func = lambda x: any(ran[k] <= key(x) <= ran[k+1] for k in range(0, L, 2))
     else:
-        func = lambda x: any(ran[k] <= ord(x) <= ran[k+1] for k in range(0, L//2, 2)) or ran[-1] <= ord(x)
+        func = lambda x: any(ran[k] <= key(x) <= ran[k+1] for k in range(0, L, 2)) or ran[-1] <= key(x)
     return Wordx(func, *arg, **kwargs)
 
 def ordRanges(ran, *arg, **kwargs):
-    # ran = (a,b,c,d) means two ranges a-b and c-d
-    # multi-range version of ordRange
+    '''Special keyRanges
+    
+    Examples:
+    -------
+    >>> cjk = ordRanges((0x4E00, 0x9FD5, 0, 256))
+    >>> cjk.parseString('我爱你 I love you') # => ['我爱你 I love you']
+    '''
+
     return keyRanges(ran, key=ord, *arg, **kwargs)
 
 def chrRanges(ran, *arg, **kwargs):
-    # multi-range version of chrRange
-    # ran = (a,b,c,d) means two ranges a-b and c-d
+    # Special keyRanges
     L = len(ran)    # L >= 1
     if L%2 == 0:
         func = lambda x: any(ran[k] <= x <= ran[k+1] for k in range(0, L//2, 2))
@@ -549,11 +577,8 @@ def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
 
 # need to be improved
 class MixedExpression(_Enhance):
-    '''MixedExpression has 4 (principal) propteries
-    baseExpr: baseExpr
-    opList: opList
-    lpar: lpar
-    rpar: rpar'''
+    '''MixedExpression, oop verion of mixedExpression
+    '''
     def __init__(self, baseExpr, opList=[], lpar=LPAREN, rpar=RPAREN, *args, **kwargs):
         super(MixedExpression, self).__init__(baseExpr, *args, **kwargs)
         self.baseExpr = baseExpr
@@ -595,11 +620,20 @@ class MixedExpression(_Enhance):
 
 
 def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpar=RPAREN):
-    '''mixed expression (return ParserElementEnhance)
-    func: function of baseExpr (can be distincted by first token)
+    '''Mixed expression, more powerful then operatorPrecedence
 
-    call operatorPrecedence
-    example:
+    It calls operatorPrecedence.
+    
+    Arguments:
+        func: function of baseExpr (can be distincted by first token)
+        others are same with operatorPrecedence
+
+    Return:
+        ParserElementEnhance
+
+    
+    Example:
+    ------
     def func(EXP):
         return pp.Group('<' + EXP + ',' + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
     EXP = mixedExpression(baseExpr, func, arithOplist)
@@ -647,3 +681,4 @@ def lambdaterm(variable=IDEN, lambdaKeyword='lambda'):
     t <<= pp.Suppress(lambdaKeyword) + pp.delimitedList(variable)('args') + (t | logicterm(constant=DIGIT, variable=IDEN, function=None))('term')
     t.setParseAction(LambdaAction)
     return t
+
