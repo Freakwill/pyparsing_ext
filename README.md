@@ -72,7 +72,8 @@ Example
 =========
 
 ```python
-w = Wordx(lambda x: x in {'a', 'b', 'c', 'd'})
+w = Wordx(lambda x: x in {'a', 'b', 'c', 'd'}) # == Word('abcd')
+
 M = delimitedMatrix(w, ch1=' ', ch2=pp.Regex('\n+').leaveWhitespace())
 p = M.parseString('a b\n c d')
 print(p.asList())
@@ -82,6 +83,12 @@ s = '''
 [2]hello, kitty
 '''
 print(enumeratedItems().parseString(s))
+
+cjk = ordRange(0x4E00, 0x9FD5)
+cjk.parseString('我爱你, I love you') # => ['我爱你']
+
+cjk = ordRanges((0x4E00, 0x9FD5, 0, 256))
+cjk.parseString('我爱你 I love you') # => ['我爱你 I love you']
 ```
 
 
