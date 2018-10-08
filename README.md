@@ -8,8 +8,9 @@ Extension of pyparsing. You can easily build your own languages. :v:
 Keywords
 ----------
 * PEG
-
-* parser
+* Regular Expressions
+* Parser
+* Formal Grammar
 
 
 ## Awesome Feature:
