@@ -373,20 +373,23 @@ def chrRanges(ran, *arg, **kwargs):
 # subclass of ParserElementEnhance
 
 class Meanwhile(pp.ParseExpression):
-    """Strings have to match all sub-expressions at the same time
+    """Parse expression whose all sub-expressions have to be matched at the same time
+
         Grammar:
-            Meanwhile([A, B, ...])
+            Meanwhile([A, B, ...]), where A, B, ... are parse expressions.
        
         Example:
-            A = Meanwhile([IDEN, ~('_'+ DIGIT)]) # IDEN % ('_'+ DIGIT)
-            to parse identifiers such as _a123 excluding _123
-            Equivalently,
-            A = Meanwhile()
-            A.append(IDEN)
-            A.exclude('_'+ DIGIT)  # <==> A % '_'+ DIGIT
+            >>> A = Meanwhile([IDEN, ~('_'+ DIGIT)]) # IDEN % ('_'+ DIGIT) for short
+            >>> to parse identifiers such as _a123 excluding _123
+            >>> A.parseString('_a123')  # => ['_a123']
+            >>> A.parseString('_123')   # => ParseException
     """
 
     def __init__(self, exprs=[]):
+        '''
+        Keyword Arguments:
+            exprs {list} -- list of parse expressions (default: {[]})
+        '''
         super(Meanwhile, self).__init__(exprs)
         self.mayReturnEmpty = all(e.mayReturnEmpty for e in self.exprs)
         self.setWhitespaceChars(self.exprs[0].whiteChars)
@@ -400,18 +403,10 @@ class Meanwhile(pp.ParseExpression):
                 raise _Exception(instring, len(instring), e.errmsg, self)
         return postloc, result
 
-    # def append(self, other):
-    #     if isinstance(other, str):
-    #         other = pp.ParserElement._literalStringClass(other)
-    #     return self.exprs.append(other)
-
-    def __exclude(self, other):
+    def __mod__(self, other):
         if isinstance(other, str):
             other = pp.ParserElement._literalStringClass(other)
         return self.exprs.append(~other)
-
-    def __mod__(self, other):
-        return self.__exclude(other)
 
     def checkRecursion(self, parseElementList):
         subRecCheckList = parseElementList[:] + [self]
