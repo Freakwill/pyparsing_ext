@@ -3,7 +3,7 @@ Introduction
 
 Abstract
 ----------
-Extension of pyparsing. You can easily build your own languages. :v:
+Extension of [pyparsing](https://github.com/pyparsing/pyparsing). You can easily build your own languages. :v:
 
 Keywords
 ----------
