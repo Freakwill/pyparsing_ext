@@ -106,6 +106,9 @@ class Calculator:
     def execute(self, parseResult):
         pass
 
+    def __setstate__(self, state):
+        self.dict_, self.context, self.control = state['dict_'], state['context'], state['control']
+
 
 class GrammarParser:
     '''Grammar Parser
@@ -173,7 +176,7 @@ class GrammarParser:
         indexExpr.setParseAction(IndexAction)
         EXP <<= pp.infixNotation(indexExpr | M, optable2oplist(self.operators))
         self.expression = EXP
-        # EXP = mixedExpression(baseExpr, funcExpr, True, optable2oplist(self.operators))
+        # EXP = mixedExpression(baseExpr, funcExpr, flag=True, opList=optable2oplist(self.operators))
 
     def enableLambda(self, sep=pp.Suppress(':')):
         lambdaExpr = pp.Keyword('lambda') + pp.delimitedList(variable)('args') + sep + EXP('expression')
@@ -201,6 +204,10 @@ class GrammarParser:
 
     def del_parser(self):
         del self.expression
+
+    def __setstate__(self, state):
+        self.keywords, self.constants, self.variables, self.functions, self.operators =\
+         state['keywords'], state['constants'], state['variables'], state['functions'], state['operators']
 
 
 class Language:
@@ -231,9 +238,5 @@ class Language:
     def __call__(self, s):
         return self.eval(s)
 
-    def __getstate__(self):
-        return self.name, self.grammar, self.calculator
-
     def __setstate__(self, state):
-        self.name, self.grammar, self.calculator = state
-
+        self.name, self.grammar, self.calculator = state['name'], state['grammar'], state['calculator']
