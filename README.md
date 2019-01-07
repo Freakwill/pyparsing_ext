@@ -32,11 +32,10 @@ pyparsing
 
 ## Structure
 
-core: basic token classes
-
-actions: classes for parsing actions
-
-utils: some useful tools
+- core: basic token classes
+- actions: classes for parsing actions
+- expressions: complicated expressions
+- utils: some useful tools
 
 Content
 =========
