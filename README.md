@@ -89,6 +89,23 @@ cjk.parseString('我爱你, I love you') # => ['我爱你']
 
 cjk = ordRanges((0x4E00, 0x9FD5, 0, 256))
 cjk.parseString('我爱你 I love you') # => ['我爱你 I love you']
+
+import pyparsing as pp
+integer = pp.pyparsing_common.signed_integer
+varname = pp.pyparsing_common.identifier
+
+arithOplist = [('-', 1, pp.opAssoc.RIGHT),
+    (pp.oneOf('* /'), 2, pp.opAssoc.LEFT),
+    (pp.oneOf('+ -'), 2, pp.opAssoc.LEFT)]
+
+def func(EXP):
+    return pp.Group('<' + EXP + pp.Suppress(',') + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
+baseExpr = integer | varname
+EXP = mixedExpression(baseExpr, func=func, opList=arithOplist)
+
+a = EXP.parseString('5*g(|-3|)+<4,5> + f(6)')
+print(a)
+# [[[5, '*', ['g', '(', ['|', ['-', 3], '|'], ')']], '+', ['<', 4, 5, '>'], '+', ['f', '(', 6, ')']]]
 ```
 
 
