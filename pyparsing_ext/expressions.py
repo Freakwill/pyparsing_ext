@@ -3,10 +3,20 @@
 
 import pyparsing as pp
 
-from pyparsing_ext import *
+from pyparsing_ext.core import *
+from pyparsing_ext.actions import *
+
 
 # helpers:
 def enumeratedItems(baseExpr=None, form='[1]', **min_max):
+    """Parser for enumerated items
+    
+    Examples:
+    [1] abc
+    [2] def
+
+    ==> ['abc', 'def']
+    """
     if form is None:
         form = '[1]'
     if '1' in form:
@@ -32,10 +42,14 @@ def _strip(ch=None):
 
 
 def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
-    r'''works like delimitedList
-    exmpale:
-    'a b\nc d' => [['a', 'b'], ['c', 'd']]
-    '''
+    r"""delimitedMatrix works like delimitedList
+
+    2-order delimitedList
+
+    Exmpale:
+    'a b\nc d' 
+    ==> [['a', 'b'], ['c', 'd']]
+    """
     if ch1 == ch2:
         raise Exception('make sure ch1 != ch2')
     if isinstance(ch1, str):
@@ -57,8 +71,9 @@ def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
 
 # need to be improved
 class MixedExpression(pp.ParseElementEnhance):
-    '''MixedExpression, oop verion of mixedExpression
-    '''
+    """MixedExpression, oop verion of mixedExpression
+    """
+
     def __init__(self, baseExpr, opList=[], lpar=LPAREN, rpar=RPAREN, *args, **kwargs):
         super(MixedExpression, self).__init__(baseExpr, *args, **kwargs)
         self.baseExpr = baseExpr
@@ -68,7 +83,7 @@ class MixedExpression(pp.ParseElementEnhance):
         self.expr = pp.infixNotation(baseExpr, opList, lpar, rpar)
 
     def enableIndex(self, action=IndexOpAction):
-        # start:stop:step
+        # index expression, x[start:stop:step]
         EXP = pp.Forward()
         SLICE = pp.Optional(EXP)('start') + COLON + pp.Optional(EXP)('stop') + pp.Optional(COLON + pp.Optional(EXP)('step'))
         indexop = LBRACK + (SLICE('slice') | EXP('index')) + RBRACK
@@ -77,6 +92,7 @@ class MixedExpression(pp.ParseElementEnhance):
         self.expr <<= pp.infixNotation(EXP, self.opList, self.lpar, self.rpar)
 
     def enableCall(self, action=CallOpAction):
+        # call expression, x(...)
         EXP = self.expr
         KWARG = IDEN + pp.Suppress('=') + EXP
         # STAR = pp.Suppress('*') + EXP, DBLSTAR = pp.Suppress('**') + EXP
@@ -86,6 +102,7 @@ class MixedExpression(pp.ParseElementEnhance):
         self.expr <<= pp.infixNotation(self.baseExpr, self.opList, self.lpar, self.rpar)
 
     def enableDot(self, action=DotOpAction):
+        # dot expression, x.a
         EXP = self.expr
         dotop = pp.Suppress('.') + IDEN('attr')
         dotop.setParseAction(action)
@@ -115,26 +132,21 @@ def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpa
     
     Example:
     ------
-    integer = pyparsing_common.signed_integer
-    varname = pyparsing_common.identifier
+    integer = pp.pyparsing_common.signed_integer
+    varname = pp.pyparsing_common.identifier
 
-    arith_expr = infixNotation(integer | varname,
-        [
-        ('-', 1, opAssoc.RIGHT),
-        (oneOf('* /'), 2, opAssoc.LEFT),
-        (oneOf('+ -'), 2, opAssoc.LEFT),
-        ])
+    arithOplist = [('-', 1, pp.opAssoc.RIGHT),
+        (pp.oneOf('* /'), 2, pp.opAssoc.LEFT),
+        (pp.oneOf('+ -'), 2, pp.opAssoc.LEFT)]
 
-    arith_expr.runTests('''
-        5+3*6
-        (5+3)*6
-        -2--11
-        ''', fullDump=False)
     def func(EXP):
-        return pp.Group('<' + EXP + ',' + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
-    baseExpr = interger | varname
-    EXP = mixedExpression(baseExpr, func, arithOplist)
+        return pp.Group('<' + EXP + pp.Suppress(',') + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
+    baseExpr = integer | varname
+    EXP = mixedExpression(baseExpr, func=func, opList=arithOplist)
 
+    a = EXP.parseString('5*g(|-3|)+<4,5> + f(6)')
+    print(a)
+    # [[[5, '*', ['g', '(', ['|', ['-', 3], '|'], ')']], '+', ['<', 4, 5, '>'], '+', ['f', '(', 6, ')']]]
     """
     
     EXP = pp.Forward()
@@ -163,7 +175,6 @@ def mixedExpression(baseExpr, func=None, flag=False, opList=[], lpar=LPAREN, rpa
     return EXP
 
 
-
 def logicterm(constant=DIGIT, variable=IDEN, function=IDEN, lambdaterm=False):
     # f(x,y...) | const | x
     if lambdaterm:
@@ -179,18 +190,3 @@ def lambdaterm(variable=IDEN, lambdaKeyword='lambda'):
     t <<= pp.Suppress(lambdaKeyword) + pp.delimitedList(variable)('args') + (t | logicterm(constant=DIGIT, variable=IDEN, function=None))('term')
     t.setParseAction(LambdaAction)
     return t
-
-integer = pp.pyparsing_common.signed_integer
-varname = pp.pyparsing_common.identifier
-
-arithOplist = [('-', 1, pp.opAssoc.RIGHT),
-    (pp.oneOf('* /'), 2, pp.opAssoc.LEFT),
-    (pp.oneOf('+ -'), 2, pp.opAssoc.LEFT)]
-
-def func(EXP):
-    return pp.Group('<' + EXP + pp.Suppress(',') + EXP +'>')| pp.Group('||' + EXP + '||') | pp.Group('|' + EXP + '|') | pp.Group(IDEN + '(' + pp.delimitedList(EXP) + ')')
-baseExpr = integer | varname
-EXP = mixedExpression(baseExpr, func=func, opList=arithOplist)
-
-a = EXP.parseString('5*5+<4,5>')
-print(a)
