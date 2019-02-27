@@ -46,7 +46,7 @@ Classes::
     
     Wordx: powerful Word
     CharsNot: powerful CharsNotIn
-    PrecededBy: as FollowedBy
+    PrecededBy: as FollowedBy  (moved to pyparsing)
     MeanWhile:
     LinenStart:
     
