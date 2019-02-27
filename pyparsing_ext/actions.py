@@ -10,18 +10,19 @@ import pyparsing as pp
 class BaseAction:
     '''Base class for parsing action classes
     '''
+    names = ()
     def __init__(self, instring='', loc=0, tokens=[]):
         self.tokens = tokens
         self.instring = instring
         self.loc = loc
+        for name in self.names:
+            if name in tokens:
+                setattr(self, name, getattr(tokens, name))
 
     def __contains__(self, name):
         return name in self.tokens
 
     def __getitem__(self, key):
-        return getattr(self.tokens, key)
-
-    def has(self, key):
         return getattr(self.tokens, key)
 
     def __len__(self):
@@ -76,7 +77,7 @@ class IndexOpAction(VarOpAction):
     # x[start:stop]
     def __init__(self, instring='', loc=0, tokens=[]):
         super(IndexOpAction, self).__init__(instring, loc, tokens)
-        if self.has('slice'):
+        if 'slice' in self:
             slc = tokens.slice
             self.start = slc.start if 'start' in slc else None
             self.stop = slc.stop if 'stop' in slc else None
@@ -85,7 +86,7 @@ class IndexOpAction(VarOpAction):
             self.index = tokens.index
 
     def eval(self, calculator):
-        if self.has('slice'):
+        if 'slice' in self:
             return slice(self.start.eval(calculator), self.stop.eval(calculator), self.step.eval(calculator))
         else:
             return self.index.eval(calculator)
@@ -101,12 +102,7 @@ class FunctionAction(BaseAction):
        properties: 
        function: a function
        args: the arguments of the function'''
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(FunctionAction, self).__init__(instring, loc, tokens)
-        if 'function' in tokens:
-            self.function = tokens.function
-        if 'args' in tokens:
-            self.args = tokens.args
+    names = ('function', 'args')
 
     def __eq__(self, other):
         if isinstance(other, FunctionAction):
@@ -136,7 +132,7 @@ class BifixAction(FunctionAction):
     '''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(BifixAction, self).__init__(instring, loc, tokens)
-        if self.has('args'):
+        if 'args' in self:
             self.args = tokens.args
         else:
             self.args = [tokens.arg]
@@ -322,10 +318,7 @@ class LambdaAction(BaseAction):
 
 class IndexAction(BaseAction):
     # action class for index expression
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(IndexAction, self).__init__(instring, loc, tokens)
-        self.index = tokens.index
-        self.variable = tokens.variable
+    names = ('index', 'variable')
 
     def __repr__(self):
         return "%s[%s]" %(self.variable, ']['.join(map(str, self.index)))
@@ -342,10 +335,7 @@ class IndexAction(BaseAction):
 
 class SliceExprAction(BaseAction):
     # action class for slice expression
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(SliceExprAction, self).__init__(instring, loc, tokens)
-        self.slice = tokens.slice
-        self.variable = tokens.variable
+    name = ('slice', 'varaible')
 
     def __repr__(self):
         return "%s[%s]" %(self.variable, ']['.join(map(str, self.slice)))
@@ -378,9 +368,9 @@ class QuantifierAction(OperatorAction):
 # tuple, set
 class TupleAction(FunctionAction):
     # action class for atomic term
+    function = 'tuple'
     def __init__(self, instring='', loc=0, tokens=[]):
         super(TupleAction, self).__init__(instring, loc, tokens)
-        self.function = 'tuple'
         self.args = tokens.items
 
     def eval(self, calculator):
@@ -389,9 +379,9 @@ class TupleAction(FunctionAction):
 
 class SetAction(FunctionAction):
     # action class for set
+    function = 'set'
     def __init__(self, instring='', loc=0, tokens=[]):
         super(SetAction, self).__init__(instring, loc, tokens)
-        self.function = 'set'
         self.args = tokens.items
 
     def eval(self, calculator):
@@ -400,11 +390,8 @@ class SetAction(FunctionAction):
 
 class DictAction(FunctionAction):
     # action class for set
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(DictAction, self).__init__(instring, loc, tokens)
-        self.function = 'set'
-        self.keys = tokens.keys
-        self.values = tokens.values
+    function = 'dict'
+    names = ('keys', 'values')
 
     def eval(self, calculator):
         return dict(arg.eval(calculator) for arg in self.args)
@@ -436,8 +423,6 @@ class AtomAction(BaseAction):
 
 class VariableAction(AtomAction):
     # action class for variable
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(VariableAction, self).__init__(instring, loc, tokens)
 
     def __hash__(self):
         return hash(self.content)
@@ -487,10 +472,10 @@ class StringAction(AtomAction):
 
 class LetAction(BaseAction):
     # action class for let-expression
+    letKeyword = 'let'
     def __init__(self, instring='', loc=0, tokens=[]):
         super(LetAction, self).__init__(instring, loc, tokens)
         self.args, self.values, self.expr = tokens.args[::2], tokens.args[1::2], tokens.expression
-        self.letKeyword = 'let'
 
     def __repr__(self):
         return "%s %s=%s: %s" %(self.letKeyword, ', '.join(map(str, self.args)), ', '.join(map(str, self.args)), self.expr)
@@ -509,15 +494,16 @@ class CommandAction(BaseAction):
     '''action for command such as assignment'''
     # def __call__(self, calculator):
     #     return self.execute(calculator)
+    args = ()
 
     def execute(self, calculator):
         return calculator
 
     def __repr__(self):
-        if self.has('keyword'):
-            return self.tokens.keyword
+        if 'keyword' in self:
+            return '%s %s'%(self.tokens.keyword, ', '.join(map(str, self.args)))
         else:
-            return self.tokens[0]
+            return '%s %s'%(self.tokens[0], ', '.join(map(str, self.args)))
 
 
 class ControlAction(CommandAction):
@@ -547,17 +533,11 @@ class ReturnAction(ControlAction):
     '''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(ReturnAction, self).__init__(instring, loc, tokens)
-        self.retval = tokens.retval
-
-    def __repr__(self):
-        if self.has('keyword'):
-            return '%s %s'%(self.tokens.keyword, self.retval)
-        else:
-            return '%s %s'%(self.tokens[0], self.retval)
+        self.args = tokens.retval
 
     def execute(self, calculator):
         calculator.control = 'return'
-        calculator.retval = self.retval.eval(calculator)
+        calculator.retval = self.args.eval(calculator)
 
 
 class PassAction(CommandAction):
@@ -569,12 +549,6 @@ class PrintAction(CommandAction):
         super(PrintAction, self).__init__(instring, loc, tokens)
         self.args = tokens.args
 
-    def __repr__(self):
-        if self.has('keyword'):
-            return '%s %s'%(self.tokens.keyword, ', '.join(map(str, self.args)))
-        else:
-            return '%s %s'%(self.tokens[0], ', '.join(map(str, self.args)))
-
     def execute(self, calculator):
         for arg in self.args:
             print(arg.eval(calculator), end=' ')
@@ -584,12 +558,6 @@ class DeleteAction(CommandAction):
     def __init__(self, instring='', loc=0, tokens=[]):
         super(DeleteAction, self).__init__(instring, loc, tokens)
         self.args = tokens.args
-
-    def __repr__(self):
-        if self.has('keyword'):
-            return '%s %s'%(self.tokens.keyword, ', '.join(map(str, self.args)))
-        else:
-            return '%s %s'%(self.tokens[0], ', '.join(map(str, self.args)))
 
     def execute(self, calculator):
         for arg in self.args:
@@ -602,7 +570,7 @@ class EmbedAction(CommandAction):
         self.code = tokens.code
 
     def __repr__(self):
-        if self.has('keyword'):
+        if 'keyword' in self:
             return '%s {%s}'%(self.tokens.keyword, self.code)
         else:
             return '%s {%s}'%(self.tokens[0], self.code)
@@ -628,14 +596,18 @@ class EmbedAction(CommandAction):
 #         return s
 
 class AssignmentAction(CommandAction):
-    '''action for assignment like x = expr'''
+    '''action for assignment like x = expr:type'''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(AssignmentAction, self).__init__(instring, loc, tokens)
         self.variable = tokens.variable
         self.expression = tokens.expression
+        if 'type' in tokens:
+            self.type = tokens.type
 
     def execute(self, calculator):
         value = self.expression.eval(calculator)
+        if hasattr(self, 'type'):
+            assert isinstance(value, self.type), 'Type of %s is not %s' % (self.variable, self.type)
         calculator.update({self.variable.content:value})
 
     def __repr__(self):
@@ -677,7 +649,7 @@ class WhileAction(IfAction):
                 break
 
     def __repr__(self):
-        return 'while %s {%s}'%(self.condition, self.program)
+        return 'while %s\n{%s}'%(self.condition, self.program)
 
 class IfelseAction(CommandAction):
     '''action for if-elif-else statement'''
@@ -685,7 +657,8 @@ class IfelseAction(CommandAction):
         super(IfelseAction, self).__init__(instring, loc, tokens)
         self.conditions = tokens.conditions[:]
         self.programs = tokens.programs[:]
-        self.elseprogram = tokens.elseprogram
+        if 'elseprogram' in tokens:
+            self.elseprogram = tokens.elseprogram
 
     def execute(self, calculator):
         for c, p in zip(self.conditions, self.programs):
@@ -694,6 +667,12 @@ class IfelseAction(CommandAction):
                 break
         else:
             self.elseprogram.execute(calculator)
+
+    def __repr__(self):
+        ifsen = 'if %s\n    {%s}\n'%(self.conditions[0], self.programs[0])
+        for c, p in zip(self.conditions[1:], self.programs[1:]):
+            ifsen += 'elif %s\n    {%s}\n' % (c, p)
+        ifsen += 'else\n    {%s}\n' % self.elseprogram
 
 
 class ForAction(WhileAction):
@@ -716,13 +695,13 @@ class ForAction(WhileAction):
                 break
 
     def __repr__(self):
-        return 'for %s in %s {%s}'%(self.loopingVar, self.range_, self.program)
+        return 'for %s in %s\n{%s}'%(self.loopingVar, self.range_, self.program)
 
 class DefAction(CommandAction):
     '''Action for definition of functions'''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(DefAction, self).__init__(instring, loc, tokens)
-        if self.has('function'):
+        if 'function' in self:
             self.function = tokens.function.content
         else:
             self.function = tokens.left, tokens.right

@@ -91,12 +91,16 @@ class MixedExpression(pp.ParseElementEnhance):
         self.opList.insert(0, indexop)
         self.expr <<= pp.infixNotation(EXP, self.opList, self.lpar, self.rpar)
 
-    def enableCall(self, action=CallOpAction):
+    def enableCallPlus(self, action=CallOpAction, flag=False):
         # call expression, x(...)
         EXP = self.expr
         KWARG = IDEN + pp.Suppress('=') + EXP
-        # STAR = pp.Suppress('*') + EXP, DBLSTAR = pp.Suppress('**') + EXP
-        callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG))('kwargs') + RPAREN
+        if flag:
+            STAR = pp.Suppress('*') + EXP
+            DBLSTAR = pp.Suppress('**') + EXP
+            callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG | STAR))('kwargs') + pp.Optional(DBLSTAR) + RPAREN
+        else:
+            callop = LPAREN + pp.Optional(pp.delimitedList(EXP))('args') + pp.Optional(pp.delimitedList(KWARG))('kwargs') + RPAREN
         callop.setParseAction(action)
         self.opList.insert(0, callop)
         self.expr <<= pp.infixNotation(self.baseExpr, self.opList, self.lpar, self.rpar)
@@ -110,9 +114,9 @@ class MixedExpression(pp.ParseElementEnhance):
         self.expr <<= pp.infixNotation(self.baseExpr, self.opList, self.lpar, self.rpar)
 
 
-    def enableAll(self, actions=None):
+    def enableAll(self, actions=None, flag=False):
         self.enableIndex()
-        self.enableCall()
+        self.enableCall(flag)
         self.enableDot()
 
 
