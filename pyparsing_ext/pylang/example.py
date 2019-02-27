@@ -3,6 +3,7 @@
 
 import math
 
+from pyparsing_ext import *
 from pyparsing_ext.pylang import *
 
 bifixDict = {('|', '|'): abs, ('[', '_]'): math.floor, ('[', '^]'): math.ceil}
@@ -28,11 +29,19 @@ code = '''
 x=|-1|;  # absolute value
 y=x*2+1;
 if x == 1
-{z=[3.3_]; # the floor value
+{z=[3.3^]; # the floor value
 }
 print "z =", z;
 '''
 print('parse source code:\n', code, '\nresult:')
 smallpyLanguage(code)
+print('see the dictionary of variables:')
+print(smallpyLanguage.calculator.context)
+
+
+print('Example 3:')
+file = 'test.txt'
+print('parse source file:\n', file, '\nresult:')
+smallpyLanguage.executeFile(file)
 print('see the dictionary of variables:')
 print(smallpyLanguage.calculator.context)

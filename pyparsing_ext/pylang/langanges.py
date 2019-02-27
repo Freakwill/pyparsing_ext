@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import operator
+
+from pyparsing_ext import *
 from pyparsing_ext.pylang import *
+
 
 arithOpTable = [{'token':'^','assoc':'right'}, {'token':pp.oneOf('+ -'),'arity':1}, pp.oneOf('* /'), pp.oneOf('+ -'), {'token':pp.oneOf('== != < > <= >='), 'action': CompareAction}]
 logicOpTable = [{'token':'~', 'arity':1, 'action':UnaryOperatorAction}, {'token':'&', 'action':BinaryOperatorAction}, {'token':'|', 'action':BinaryOperatorAction}]
@@ -119,7 +123,6 @@ class ProgrammingLanguage(Language):
         if 'loading' in ret:
             for path in ret.loading:
                 self.executeFile(path.strip())
-        ret = ret[-1]
         ret.execute(self.calculator)
 
     def __call__(self, s):

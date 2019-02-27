@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-'''pyplang (make a language with pyparsing)
+"""pyplang (make a language with pyparsing)
 
 Application: text parsing
 Require: pyparsing
 -------------------------------
 Path:
 Author: William
-'''
+"""
 
 import operator
 
@@ -135,7 +135,7 @@ class GrammarParser:
             self.functions = functions
         self.operators = operators
 
-    def make_parser(self):
+    def make_parser(self, enablePackrat=True):
         self.constant = pp.MatchFirst([constant['token'].setParseAction(constant.get('action', ConstantAction)) for constant in self.constants])
         if self.variables:
             self.variable = pp.MatchFirst([variable['token'].setParseAction(variable.get('action', VariableAction)) for variable in self.variables])
@@ -176,6 +176,8 @@ class GrammarParser:
         indexExpr.setParseAction(IndexAction)
         EXP <<= pp.infixNotation(indexExpr | M, optable2oplist(self.operators))
         self.expression = EXP
+        if enablePackrat:
+            self.expression.enablePackrat()
         # EXP = mixedExpression(baseExpr, funcExpr, flag=True, opList=optable2oplist(self.operators))
 
     def enableLambda(self, sep=pp.Suppress(':')):
