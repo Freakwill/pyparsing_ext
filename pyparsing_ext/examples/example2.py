@@ -24,9 +24,14 @@ smallDict.update(pydict)
 
 # language
 smallpyLanguage = ProgrammingLanguage(name="SmallPython", grammar=smallGrammar, calculator=Calculator(dict_=smallDict))
+smallpyLanguage.config = {
+            'version': '0.0',
+            'paths': [],
+            'suffix': '.spy'
+        }
 
 import pathlib
-file = pathlib.Path('test').with_suffix('.spy')
+file = 'test'
 print('parse source file:\n', file, '\nresult:')
 smallpyLanguage.executeFile(file)
 print('see the dictionary of variables:')
