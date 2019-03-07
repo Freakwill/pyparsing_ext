@@ -134,6 +134,7 @@ see the dictionary of variables:
 {'x': Decimal('1'), 'y': Decimal('3'), 'z': 3}
 ```
 
+In example2.py, we create a programming language, "Small Python".
 run `example2.py` for a complicated example, to parse a text file `test.spy`
 
 `example2.smallpy.cmdline()`  # in mode of command line
