@@ -35,22 +35,23 @@ class ProgrammingGrammarParser(GrammarParser):
         variable = self.variable
         expression = self.expression
         # parser for program
+        END = SEMICOLON | pp.LineEnd()
         self.program = pp.Forward()
         programWithControl = pp.Forward()
-        expressionStatement = expression + SEMICOLON
-        assignmentStatement = variable('variable') + pp.Suppress('=') + expression('expression') + pp.Optional(':' + IDEN('type')) + SEMICOLON
+        expressionStatement = expression + END
+        assignmentStatement = variable('variable') + pp.Suppress('=') + expression('expression') + pp.Optional(':' + IDEN('type')) + END
         assignmentStatement.setParseAction(AssignmentAction)
         # define if while break pass statements
         # Keywords = {'if':'if', 'while':'while', 'break':'break', 'pass':'pass', 'def':'def'}
-        breakStatement = self.keywords['break']('keyword') + SEMICOLON
+        breakStatement = self.keywords['break']('keyword') + END
         breakStatement.setParseAction(BreakAction)
-        continueStatement = self.keywords['continue']('keyword') + SEMICOLON
+        continueStatement = self.keywords['continue']('keyword') + END
         continueStatement.setParseAction(ContinueAction)
-        passStatement = self.keywords['pass']('keyword') + SEMICOLON
+        passStatement = self.keywords['pass']('keyword') + END
         passStatement.setParseAction(PassAction)
-        printStatement = self.keywords['print']('keyword') + pp.delimitedList(expression)('args') + SEMICOLON
+        printStatement = self.keywords['print']('keyword') + pp.delimitedList(expression)('args') + END
         printStatement.setParseAction(PrintAction)
-        returnStatement = self.keywords['return']('keyword') + expression('retval') + SEMICOLON
+        returnStatement = self.keywords['return']('keyword') + expression('retval') + END
         returnStatement.setParseAction(ReturnAction)
 
         # atomicStatement = assignmentStatement | breakStatement | continueStatement | passStatement | printStatement | returnStatement
@@ -101,15 +102,23 @@ class ProgrammingGrammarParser(GrammarParser):
     def parse(self, s):
         if not hasattr(self, 'program'):
             self.make_parser()
-        return self.program.parseString(s, parseAll=True)[0]
+        try:
+            return self.program.parseString(s, parseAll=True)[0]
+        except pp.ParseException as pe:
+            print(pp.ParseException.explain(pe))
 
 
 class ProgrammingLanguage(Language):
     '''programming Language
     '''
-    def __init__(self, name='Toy', version='0.0', *args, **kwargs):
+    def __init__(self, name='Toy', *args, **kwargs):
         super(ProgrammingLanguage, self).__init__(*args, **kwargs)
-        self.version = version
+
+        self.config = {
+            'version': '0.0',
+            'paths': [],
+            'suffix': '.toy'
+        }
 
     def make(self):
         grammar = ProgrammingGrammarParser()
@@ -122,6 +131,20 @@ class ProgrammingLanguage(Language):
             for path in ret.loading:
                 self.executeFile(path.strip())
         ret.execute(self.calculator)
+
+    def parseFile(self, filename):
+        import pathlib
+        filename = pathlib.Path(filename).with_suffix(self.config['suffix'])
+        try:
+            return super(ProgrammingLanguage, self).parseFile(filename)
+        except:
+            pass
+        for path in self.config['path']:
+            filename = pathlib.Path(path) / filename
+            if filename.exists():
+                return super(ProgrammingLanguage, self).parseFile(filename)
+        else:
+            raise Exception('Could not find file %s' % filename)
 
     def executeFile(self, filename):
         ret = self.parseFile(filename)
