@@ -11,6 +11,7 @@ Keywords
 * Regular Expressions
 * Parser
 * Formal Grammar
+* Operating Semantics
 
 
 ## Awesome Feature:
