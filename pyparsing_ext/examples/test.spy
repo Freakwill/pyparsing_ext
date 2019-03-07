@@ -1,0 +1,33 @@
+
+# Examples
+
+def x $+ y {
+# more complicated function
+def d(x){
+# local function
+return 2*x;
+}
+
+z= x+d(y);
+return z;
+}
+
+print (-1 $+ -2) < 3; # 3 < 3 is False
+
+
+def f(x,y=1) {
+# just add x and y
+z = x+y;
+return z;
+}
+
+print f(3);
+
+
+def [x, y] {
+    # it is valid!
+    z=x*y-y*x;
+    return z;
+}
+
+print [-1,-2];
