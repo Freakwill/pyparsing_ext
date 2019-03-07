@@ -433,6 +433,9 @@ class VariableAction(AtomAction):
         else:
             raise Exception('%s could not be evaluated!'%self.content)
 
+class TypeAction(VariableAction):
+    pass
+
 
 class ConstantAction(AtomAction):
     # action class for constant
@@ -698,30 +701,49 @@ class ForAction(WhileAction):
         return 'for %s in %s\n{%s}'%(self.loopingVar, self.range_, self.program)
 
 class DefAction(CommandAction):
-    '''Action for definition of functions'''
+    '''
+    Action for definition of functions
+    '''
     def __init__(self, instring='', loc=0, tokens=[]):
         super(DefAction, self).__init__(instring, loc, tokens)
         if 'function' in self:
             self.function = tokens.function.content
+            self.args = tokens.args[:]
+        elif 'operator' in self:
+            self.function = tokens.operator
+            self.args = (tokens.arg1, tokens.arg2)
         else:
             self.function = tokens.left, tokens.right
-        self.args = tokens.args[:]
+            self.args = tokens.args[:]
         self.program = tokens.program
+
 
     def execute(self, calculator):
         with calculator as loc:
             def f(*args):
-                loc.update({arg.content:v for arg, v in zip(self.args, args)})
+                loc.update({arg.name:arg.default.eval(calculator) for arg in self.args if 'default' in arg})
+                loc.update({arg.name:v for arg, v in zip(self.args, args)})
                 self.program.execute(loc)
                 return loc.retval
         calculator.update({self.function:f})
 
 
     def __repr__(self):
-        if self.has('function'):
+        if 'function' in self:
             return 'def %s(%s) {%s}'%(self.function, ', '.join(map(str, self.args)), self.program)
+        elif 'operator' in self:
+            return 'def %s %s %s {%s}'%(self.args[0], self.function, self.args[1], self.program)
         else:
             return 'def %s(%s)%s {%s}'%(self.function[0], ', '.join(map(str, self.args)), self.function[1], self.program)
+
+
+class ArgumentAction(BaseAction):
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(ArgumentAction, self).__init__(instring, loc, tokens)
+        self.name = tokens.name
+        if 'default' in self:
+            self.default = tokens.default
+
 
 class ProgramSequenceAction(CommandAction):
     '''action for program; program; program...'''
@@ -737,53 +759,3 @@ class ProgramSequenceAction(CommandAction):
 
     def __repr__(self):
         return ';\n'.join(map(str, self.program))
-
-
-def optable2oplist(optable):
-    '''list of operator-dict to list of operators (as in pyparsing)
-    operator-dict = {'token':'+', 'arity':2, 'assoc':'left', 'action':BinaryOperatorAction}
-    '''
-    oplist = []
-    for op in optable:
-        if isinstance(op, (str, pp.ParserElement)):
-            oplist.append((op, 2, pp.opAssoc.LEFT, BinaryOperatorAction))
-            continue
-        elif isinstance(op, tuple):
-            if len(op) == 3:
-                if op[1] == 2:
-                    oplist.append(op + (BinaryOperatorAction,))
-                elif op[1] == 1:
-                    oplist.append(op + (UnaryOperatorAction,))
-                elif op[1] == 3:
-                    oplist.append(op + (TernaryOperatorAction,))
-            oplist.append(op)
-            continue
-        if 'arity' not in op:
-            op.update(arity=2)
-            n = 2
-        else:
-            n = op['arity']
-        if 'assoc' not in op:
-            if n == 1:
-                op.update(assoc=pp.opAssoc.RIGHT)
-            else:
-                op.update(assoc=pp.opAssoc.LEFT)
-        else:
-            if op['assoc'] in {'left', 'Left', 'l', 'L'}:
-                op.update(assoc=pp.opAssoc.LEFT)
-            elif op['assoc'] in {'right', 'Right', 'r', 'R'}:
-                op.update(assoc=pp.opAssoc.RIGHT)
-        if 'action' not in op:
-            if n == 1:
-                action = UnaryOperatorAction
-            elif n == 2:
-                if op['assoc'] == pp.opAssoc.LEFT:
-                    action = BinaryOperatorAction
-                elif op['assoc'] == pp.opAssoc.RIGHT:
-                    action = RightBinaryOperatorAction
-            elif n == 3:
-                action = TernaryOperatorAction
-            oplist.append((op['token'], n, op['assoc'], action))
-        else:
-            oplist.append((op['token'], n, op['assoc'], op['action']))
-    return oplist
