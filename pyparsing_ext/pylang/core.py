@@ -31,6 +31,13 @@ class Calculator:
         self.control = control
         self.maxloop = 5000
 
+    def __str__(self):
+        return f'''
+Dictionary: 
+    {self.dict_}
+Context: 
+    {self.context}'''
+
     def copy(self):
         return Calculator(self.dict_, self.context.copy(), self.control)
 
@@ -167,7 +174,7 @@ class GrammarParser:
                     else:
                         funcExpr.append((function['token']('function') + LPAREN + ((EXP + COMMA) * (function['arity']-1) + EXP)('args') + RPAREN).setParseAction(function['action']))
                 else:
-                    funcExpr.append((function['token']('function') + LPAREN+ pp.delimitedList(EXP)('args') + RPAREN).setParseAction(function['action']))
+                    funcExpr.append((function['token']('function') + LPAREN + pp.delimitedList(EXP)('args') + RPAREN).setParseAction(function['action']))
         funcExpr = pp.MatchFirst(funcExpr)
         tupleExpr = LPAREN + (pp.Group(pp.Optional(EXP + COMMA)) | (EXP + COMMA + pp.delimitedList(EXP) + pp.Optional(COMMA)))('items') + RPAREN
         tupleExpr.setParseAction(TupleAction)

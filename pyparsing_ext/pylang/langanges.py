@@ -14,7 +14,8 @@ arithDict = {'True':True, 'False':False, '+': {1:operator.pos, 2:operator.add}, 
 
 class LogicGrammarParser(GrammarParser):
     # Grammar of Logic Language
-    def __init__(self, constants=[{'token':NUMBER, 'action':NumberAction}, {'token':pp.quotedString, 'action':StringAction}], variables=[{'token':IDEN, 'action':VariableAction}], quantifier=pp.Keyword('forall') | pp.Keyword('exist')):
+    def __init__(self, constants=[{'token':NUMBER, 'action':NumberAction}, {'token':pp.quotedString, 'action':StringAction}],
+        variables=[{'token':IDEN, 'action':VariableAction}], quantifier=pp.Keyword('forall') | pp.Keyword('exist')):
         atomicProposition = expression + pp.oneOf('= < > <= >=') + expression
         operators = arithOpTable \
         + [{'token':quantifier('quantifier') + pp.delimitedList(variable)('variables'), 'arity':1, 'action':QuantifierAction}] \
@@ -29,15 +30,15 @@ class ProgrammingGrammarParser(GrammarParser):
     '''programming Language
     '''
 
-    def make_parser(self):
-        super(ProgrammingGrammarParser, self).make_parser()
-        variable = self.variables[0]['token']
+    def make_parser(self, *args, **kwargs):
+        super(ProgrammingGrammarParser, self).make_parser(*args, **kwargs)
+        variable = self.variable
         expression = self.expression
         # parser for program
         self.program = pp.Forward()
         programWithControl = pp.Forward()
         expressionStatement = expression + SEMICOLON
-        assignmentStatement = variable('variable') + pp.Suppress('=') + expression('expression') + SEMICOLON
+        assignmentStatement = variable('variable') + pp.Suppress('=') + expression('expression') + pp.Optional(':' + IDEN('type')) + SEMICOLON
         assignmentStatement.setParseAction(AssignmentAction)
         # define if while break pass statements
         # Keywords = {'if':'if', 'while':'while', 'break':'break', 'pass':'pass', 'def':'def'}
@@ -62,8 +63,12 @@ class ProgrammingGrammarParser(GrammarParser):
         # if condition {program} pp.ZeroOrMore(elif condition {program}) else {program}
         # IfelseAction
         whileStatement = self.keywords['while']('keyword') + expression('condition') + LBRACE + programWithControl('program') + RBRACE
-        whileStatement.setParseAction(WhileAction)       
-        defStatement = self.keywords['def']('keyword') + (variable('function') + LPAREN + pp.delimitedList(variable)('args') + RPAREN | PUNC('left') + pp.delimitedList(variable)('args') + PUNC('right')) + LBRACE + self.program('program') + RBRACE
+        whileStatement.setParseAction(WhileAction)
+        ARG = variable('name') + pp.Optional(pp.Suppress('=') + expression('default'))
+        ARG.setParseAction(ArgumentAction)
+        defStatement = self.keywords['def']('keyword') + (variable('function') + LPAREN + pp.delimitedList(ARG)('args') + RPAREN
+          | PUNC('left') + pp.delimitedList(ARG)('args') + PUNC('right')
+          | ARG('arg1') + PUNC('operator') + ARG('arg2')) + LBRACE + self.program('program') + RBRACE
         defStatement.setParseAction(DefAction)
         self.statements = [ifStatement, whileStatement, defStatement, returnStatement, passStatement, printStatement, assignmentStatement, expressionStatement, LBRACE + self.program + RBRACE]
         statement = pp.MatchFirst(self.statements)
