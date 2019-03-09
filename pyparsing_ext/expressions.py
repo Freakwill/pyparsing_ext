@@ -77,6 +77,15 @@ def tupleExpression(baseExpr=pp.Word(pp.alphanums), lpar=LPAREN, rpar=RPAREN):
     return lpar + ((baseExpr + COMMA + pp.delimitedList(baseExpr) + pp.Optional(COMMA)) | pp.Group(pp.Optional(baseExpr + COMMA))) + rpar
 
 
+def tableExpression(baseExpr=pp.Word(pp.alphanums), sep=COLON, lpar=LBRACE, rpar=RBRACE):
+    """Tuple Expression
+    
+    Some valid expression:
+    (1,), (), (), (1,2,3), (1,2,3,)
+    """
+    return lpar + pp.delimitedList(baseExpr + sep + baseExpr) + rpar
+
+
 # need to be improved
 class MixedExpression(pp.ParseElementEnhance):
     """MixedExpression, oop verion of mixedExpression
