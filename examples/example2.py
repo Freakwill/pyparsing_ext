@@ -9,7 +9,7 @@ from pyparsing_ext.pylang import *
 
 # grammar
 opTable = arithOpTable
-OPUNC = pp.Word('$', '0123456789+-*/^&%<>=@!~:')
+OPUNC = pp.Word('$~', '0123456789+-*/^&%<>=@!~:')
 opTable.append({'token':OPUNC})
 
 smallGrammar = ProgrammingGrammarParser(keywords=commonKeywords, 
@@ -24,15 +24,14 @@ smallDict.update(pydict)
 
 # language
 smallpyLanguage = ProgrammingLanguage(name="SmallPython", grammar=smallGrammar, calculator=Calculator(dict_=smallDict))
-smallpyLanguage.config = {
+smallpyLanguage.info = {
             'version': '0.0',
             'paths': [],
-            'suffix': '.spy'
-        }
+            'suffix': '.spy'}
 
-import pathlib
 file = 'test'
-print('parse source file:\n', file, '\nresult:')
+print(f'Parse source file:\n{file}{smallpyLanguage.info["suffix"]}\nresult:')
 smallpyLanguage.executeFile(file)
-print('see the dictionary of variables:')
+print('The dictionary of variables:')
 print(smallpyLanguage.calculator.context)
+
