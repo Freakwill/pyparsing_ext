@@ -45,7 +45,7 @@ def iswhite(s):
 # useful tokens
 # words
 IDEN = pp.pyparsing_common.identifier
-DIGIT = pp.pyparsing_common.integer
+DIGIT = pp.Word(pp.nums)
 WORD = pp.Word(pp.alphas, pp.alphas+'-')
 
 # punctuations
@@ -69,9 +69,9 @@ SEMICOLON = pp.Suppress(';')
 
 # numbers
 INTEGER = pp.pyparsing_common.signed_integer
-FRACTIOIN = pp.Optional(PM) + DIGIT + SLASH + DIGIT
+FRACTIOIN = pp.pyparsing_common.fraction
 DECIMAL = pp.Combine(pp.Optional(PM) + pp.Optional(DIGIT) + DOT + DIGIT)
-NUMBER = pp.Combine(pp.Optional(PM) + DIGIT + pp.Optional(DOT + DIGIT)) | DECIMAL
+NUMBER = pp.pyparsing_common.fnumber | DECIMAL
 STRING = pp.quotedString.setParseAction(pp.removeQuotes) | pp.QuotedString('"""', multiline=True) | pp.QuotedString("'''", multiline=True)
 
 

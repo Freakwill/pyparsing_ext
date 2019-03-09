@@ -9,6 +9,7 @@ from pyparsing_ext.pylang import *
 
 arithOpTable = [{'token':'^','assoc':'right'}, {'token':pp.oneOf('+ -'),'arity':1}, pp.oneOf('* /'), pp.oneOf('+ -'), {'token':pp.oneOf('== != < > <= >='), 'action': CompareAction}]
 logicOpTable = [{'token':'~', 'arity':1, 'action':UnaryOperatorAction}, {'token':'&', 'action':BinaryOperatorAction}, {'token':'|', 'action':BinaryOperatorAction}]
+
 arithDict = {'True':True, 'False':False, '+': {1:operator.pos, 2:operator.add}, '*': operator.mul, '-':{1:operator.neg, 2:operator.sub}, '/':operator.truediv, '^':operator.pow, '==':operator.eq, '!=':operator.ne, '<':operator.lt, '>':operator.gt, '<=':operator.le, '>=':operator.ge}
 
 
@@ -26,6 +27,7 @@ class LogicGrammarParser(GrammarParser):
 
 commonKeywords = {'if':pp.Keyword('if'), 'elif':pp.Keyword('elif'), 'else':pp.Keyword('else'), 'while':pp.Keyword('while'), 'break':pp.Keyword('break'), 'continue':pp.Keyword('continue'), 'return':pp.Keyword('return'), 'pass':pp.Keyword('pass'), 'def':pp.Keyword('def'), 'print':pp.Keyword('print')}
 
+
 class ProgrammingGrammarParser(GrammarParser):
     '''programming Language
     '''
@@ -39,7 +41,7 @@ class ProgrammingGrammarParser(GrammarParser):
         self.program = pp.Forward()
         programWithControl = pp.Forward()
         expressionStatement = expression + END
-        assignmentStatement = variable('variable') + pp.Suppress('=') + expression('expression') + pp.Optional(':' + IDEN('type')) + END
+        assignmentStatement = variable('variable') + pp.Suppress('=') + (self.nakeTupleExpr('args') | self.expression('arg')) + pp.Optional(':' + IDEN('type')) + END
         assignmentStatement.setParseAction(AssignmentAction)
         # define if while break pass statements
         # Keywords = {'if':'if', 'while':'while', 'break':'break', 'pass':'pass', 'def':'def'}
@@ -51,7 +53,7 @@ class ProgrammingGrammarParser(GrammarParser):
         passStatement.setParseAction(PassAction)
         printStatement = self.keywords['print']('keyword') + pp.delimitedList(expression)('args') + END
         printStatement.setParseAction(PrintAction)
-        returnStatement = self.keywords['return']('keyword') + expression('retval') + END
+        returnStatement = self.keywords['return']('keyword') + (self.nakeTupleExpr('args') | self.expression('arg')) + END
         returnStatement.setParseAction(ReturnAction)
 
         # atomicStatement = assignmentStatement | breakStatement | continueStatement | passStatement | printStatement | returnStatement
@@ -65,6 +67,7 @@ class ProgrammingGrammarParser(GrammarParser):
         # IfelseAction
         whileStatement = self.keywords['while']('keyword') + expression('condition') + LBRACE + programWithControl('program') + RBRACE
         whileStatement.setParseAction(WhileAction)
+
         ARG = variable('name') + pp.Optional(pp.Suppress('=') + expression('default'))
         ARG.setParseAction(ArgumentAction)
         defStatement = self.keywords['def']('keyword') + (variable('function') + LPAREN + pp.delimitedList(ARG)('args') + RPAREN
@@ -114,7 +117,7 @@ class ProgrammingLanguage(Language):
     def __init__(self, name='Toy', *args, **kwargs):
         super(ProgrammingLanguage, self).__init__(*args, **kwargs)
 
-        self.config = {
+        self.info = {
             'version': '0.0',
             'paths': [],
             'suffix': '.toy'
@@ -134,24 +137,24 @@ class ProgrammingLanguage(Language):
 
     def parseFile(self, filename):
         import pathlib
-        filename = pathlib.Path(filename).with_suffix(self.config['suffix'])
-        try:
+        filename = pathlib.Path(filename).with_suffix(self.info['suffix'])
+        if filename.exists():
             return super(ProgrammingLanguage, self).parseFile(filename)
-        except:
-            pass
-        for path in self.config['path']:
-            filename = pathlib.Path(path) / filename
-            if filename.exists():
-                return super(ProgrammingLanguage, self).parseFile(filename)
         else:
-            raise Exception('Could not find file %s' % filename)
+            for path in self.info['paths']:
+                filename = pathlib.Path(path) / filename
+                if filename.exists():
+                    return super(ProgrammingLanguage, self).parseFile(filename)
+            else:
+                raise Exception('Could not find file %s' % filename)
 
     def executeFile(self, filename):
         ret = self.parseFile(filename)
-        if 'loading' in ret:
-            for path in ret.loading:
-                self.executeFile(path.strip())
-        ret.execute(self.calculator)
+        if ret:
+            if 'loading' in ret:
+                for path in ret.loading:
+                    self.executeFile(path.strip())
+            ret.execute(self.calculator)
 
     def __call__(self, s):
         self.execute(s)

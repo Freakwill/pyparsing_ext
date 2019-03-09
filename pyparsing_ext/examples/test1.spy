@@ -1,0 +1,44 @@
+
+# Examples
+
+print "compiling test.spy...";
+
+def x $+ y {
+# more complicated function
+def d(x){
+# local function
+return 2*x;
+}
+
+z= x+d(y);
+return z;
+}
+
+print (-1 $+ -2) < 3; # 3 < 3 is False
+
+
+def f(x,y=1) {
+# just add x and y
+z = x+y;
+return z;
+}
+
+print "f(3,3) = ";
+print f(3,3);
+
+print "f(3) = ";
+print f(3);
+
+
+def [x, y] {
+    z=x*y-y*x;
+    return z;
+}
+
+print [-1,-2];
+
+def x ~ y {
+    return |x - y| < 0.1;
+}
+
+print 1.1 ~ 1.05;

@@ -33,7 +33,8 @@ cOplist = arithOplist + setOplist + [
     ((pp.Keyword('?'), pp.Keyword(':')), 3, pp.opAssoc.RIGHT, TernaryOperatorAction)]
 
 class Operator(object):
-    """Operator, esp. Math operators +-*/"""
+    """Operator, esp. Math operators +-*/
+    """
     
     def __init__(self, symbol, arity=2, assoc=pp.opAssoc.LEFT, action=None):
         """

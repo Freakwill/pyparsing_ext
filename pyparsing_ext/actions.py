@@ -3,6 +3,7 @@
 
 
 import functools
+# import dataclasses
 
 import pyparsing as pp
 
@@ -121,8 +122,27 @@ class FunctionAction(BaseAction):
 
     def eval(self, calculator):
         # calculator(self.function, *self.args)
-        return calculator(self.function, *(arg.eval(calculator) for arg in self.args))
+        args = []
+        kwargs = {}
+        for arg in self.args:
+            if isinstance(arg, UnpackAction):
+                args.extend(arg.content)
+            elif isinstance(arg, KWUnpackAction):
+                kwargs.update(arg.content)
+            elif isinstance(arg, KWAction):
+                kwargs[arg.key]=arg.value
+            else:
+                args.append(arg)
+        return calculator(self.function, *(arg.eval(calculator) for arg in args))
 
+class UnpackAction(BaseAction):
+    names = ('content',)
+
+class KWUnpackAction(BaseAction):
+    names = ('content',)
+
+class KWAction(BaseAction):
+    names = ('value','key')
  
 class BifixAction(FunctionAction):
     '''Action class for bifix operator such as 
@@ -366,35 +386,45 @@ class QuantifierAction(OperatorAction):
         return "(%s (%s) %s)" %(self.quantifier, ', '.join(map(tosx, self.variables)), self.operand.sexpr())
 
 # tuple, set
-class TupleAction(FunctionAction):
+
+class IterableAction(FunctionAction):
+    def __iter__(self):
+        return iter(self.args[:])
+
+class TupleAction(IterableAction):
     # action class for atomic term
     function = 'tuple'
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(TupleAction, self).__init__(instring, loc, tokens)
-        self.args = tokens.items
 
     def eval(self, calculator):
         return tuple(arg.eval(calculator) for arg in self.args)
 
+    def __str__(self):
+        return tuple(str(arg.eval(calculator)) for arg in self.args)
 
-class SetAction(FunctionAction):
+
+class SetAction(IterableAction):
     # action class for set
     function = 'set'
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(SetAction, self).__init__(instring, loc, tokens)
-        self.args = tokens.items
 
     def eval(self, calculator):
         return set(arg.eval(calculator) for arg in self.args)
 
+    def __str__(self):
+        return '{%s}' % (str(arg.eval(calculator)) for arg in self.args)
 
-class DictAction(FunctionAction):
+
+class DictAction(IterableAction):
     # action class for set
-    function = 'dict'
-    names = ('keys', 'values')
+    def __init__(self, instring='', loc=0, tokens=[]):
+        super(SetAction, self).__init__(instring, loc, tokens)
+        self.keys = [t.key for t in tokens]
+        self.values = [t.value for t in tokens]
 
     def eval(self, calculator):
-        return dict(arg.eval(calculator) for arg in self.args)
+        return {arg.key.eval(calculator):arg.value.eval(calculator) for arg in self.args}
+
+    def __str__(self):
+        return '{%s}' % ('%s:%s'% (str(arg.key.eval(calculator)), str(arg.value.eval(calculator))) for arg in self.args)
 
 
 # More advanced actions
@@ -454,6 +484,7 @@ class NumberAction(AtomAction):
         import decimal
         return decimal.Decimal(self.content)
 
+
 class IntegerAction(AtomAction):
     # action class for integer
 
@@ -471,6 +502,9 @@ class StringAction(AtomAction):
 
     def __repr__(self):
         return '"%s"'%self.content
+
+    def __iter__(self):
+        return self.content
 
 
 class LetAction(BaseAction):
@@ -497,10 +531,10 @@ class CommandAction(BaseAction):
     '''action for command such as assignment'''
     # def __call__(self, calculator):
     #     return self.execute(calculator)
-    args = ()
+    names = ('args',)
 
     def execute(self, calculator):
-        return calculator
+        pass
 
     def __repr__(self):
         if 'keyword' in self:
@@ -527,30 +561,26 @@ class ContinueAction(ControlAction):
 class ReturnAction(ControlAction):
     '''Action for return statement
     
-    It is an action for return statement `return x`, x will saved in `.retval` of tokens.
+    It is an action for return statement `return x` or `return x, y`.
     Executing the statement makes the calculator in the control state "return", and
     the return value will be saved in the calculator.
     
     Extends:
         ControlAction
     '''
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(ReturnAction, self).__init__(instring, loc, tokens)
-        self.args = tokens.retval
-
+    names = ('arg', 'args')
     def execute(self, calculator):
         calculator.control = 'return'
-        calculator.retval = self.args.eval(calculator)
-
+        if 'arg' in self:
+            calculator.retval = self.arg.eval(calculator)
+        else:
+            calculator.retval = tuple(arg.eval(calculator) for arg in self.args)
 
 class PassAction(CommandAction):
     pass
 
 
 class PrintAction(CommandAction):
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(PrintAction, self).__init__(instring, loc, tokens)
-        self.args = tokens.args
 
     def execute(self, calculator):
         for arg in self.args:
@@ -558,9 +588,6 @@ class PrintAction(CommandAction):
         print()
 
 class DeleteAction(CommandAction):
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(DeleteAction, self).__init__(instring, loc, tokens)
-        self.args = tokens.args
 
     def execute(self, calculator):
         for arg in self.args:
@@ -568,9 +595,8 @@ class DeleteAction(CommandAction):
 
 
 class EmbedAction(CommandAction):
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(EmbedAction, self).__init__(instring, loc, tokens)
-        self.code = tokens.code
+    
+    names = ('code',)
 
     def __repr__(self):
         if 'keyword' in self:
@@ -600,18 +626,20 @@ class EmbedAction(CommandAction):
 
 class AssignmentAction(CommandAction):
     '''action for assignment like x = expr:type'''
-    def __init__(self, instring='', loc=0, tokens=[]):
-        super(AssignmentAction, self).__init__(instring, loc, tokens)
-        self.variable = tokens.variable
-        self.expression = tokens.expression
-        if 'type' in tokens:
-            self.type = tokens.type
+    names = ('args', 'variable', 'type', 'arg')
 
     def execute(self, calculator):
-        value = self.expression.eval(calculator)
-        if hasattr(self, 'type'):
-            assert isinstance(value, self.type), 'Type of %s is not %s' % (self.variable, self.type)
-        calculator.update({self.variable.content:value})
+        if 'args' in self:
+            values = tuple(arg(calculator) for arg in self.args)
+            if 'type' in self:
+                for value in values:
+                    assert isinstance(value, self.type(calculator)), 'Type of %s is not %s' % (self.variable, self.type)
+            calculator.update({self.variable.content:values})
+        else:
+            value = self.arg(calculator)
+            if 'type' in self:
+                assert isinstance(value, self.type(calculator)), 'Type of %s is not %s' % (self.variable, self.type)
+            calculator.update({self.variable.content:value})
 
     def __repr__(self):
         return '%s = %s'%(self.variable, self.expression)
@@ -652,7 +680,8 @@ class WhileAction(IfAction):
                 break
 
     def __repr__(self):
-        return 'while %s\n{%s}'%(self.condition, self.program)
+        return 'while %s\n{%s}' % (self.condition, self.program)
+
 
 class IfelseAction(CommandAction):
     '''action for if-elif-else statement'''
@@ -700,6 +729,7 @@ class ForAction(WhileAction):
     def __repr__(self):
         return 'for %s in %s\n{%s}'%(self.loopingVar, self.range_, self.program)
 
+
 class DefAction(CommandAction):
     '''
     Action for definition of functions
@@ -720,9 +750,23 @@ class DefAction(CommandAction):
 
     def execute(self, calculator):
         with calculator as loc:
-            def f(*args):
+            def f(*args, **kwargs):
                 loc.update({arg.name:arg.default.eval(calculator) for arg in self.args if 'default' in arg})
-                loc.update({arg.name:v for arg, v in zip(self.args, args)})
+                for k, arg_v in enumerate(zip(self.args, args)):
+                    arg, v = arg_v
+                    if arg.kind != '*':
+                        loc[arg.name] = v
+                    else:
+                        loc[arg.name] = args[k:]
+                        break
+                c = kwargs.copy()
+                for k, v in kwargs.items():
+                    if any(k == arg.name for arg in self.args):
+                        loc[k] = v
+                        del c[k]
+                if self.args[-1].kind == '**':
+                    loc[self.args[-1].name] = c
+                loc.update(kwargs)
                 self.program.execute(loc)
                 return loc.retval
         calculator.update({self.function:f})
@@ -738,11 +782,16 @@ class DefAction(CommandAction):
 
 
 class ArgumentAction(BaseAction):
+
     def __init__(self, instring='', loc=0, tokens=[]):
         super(ArgumentAction, self).__init__(instring, loc, tokens)
         self.name = tokens.name
         if 'default' in self:
             self.default = tokens.default
+        if 'kind' in self:
+            self.kind = tokens.kind
+        else:
+            self.kind = ''
 
 
 class ProgramSequenceAction(CommandAction):

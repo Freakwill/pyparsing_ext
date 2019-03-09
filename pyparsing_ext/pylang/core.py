@@ -9,6 +9,7 @@ Author: William
 """
 
 import operator
+import copy
 
 import pyparsing as pp
 
@@ -56,8 +57,11 @@ Context:
         else:
             raise NameError('Did not find %s' % x)
 
+    def __setitem__(self, x, v):
+        self.context[x] = v
+
     def __enter__(self):
-        return self.copy()
+        return copy.deepcopy(self)
 
     def __exit__(self, *args, **kwargs):
         return True
@@ -153,6 +157,8 @@ class GrammarParser:
 
         EXP = pp.Forward()
         funcExpr = []
+        unpackExpr = pp.Suppress('*') + EXP('content')
+        unpackExpr.setParseAction(UnpackAction)
         for function in self.functions:
             if isinstance(function['token'], tuple) and len(function['token'])==2:
                 # bifixNotation
@@ -176,16 +182,26 @@ class GrammarParser:
                 else:
                     funcExpr.append((function['token']('function') + LPAREN + pp.delimitedList(EXP)('args') + RPAREN).setParseAction(function['action']))
         funcExpr = pp.MatchFirst(funcExpr)
-        tupleExpr = LPAREN + (pp.Group(pp.Optional(EXP + COMMA)) | (EXP + COMMA + pp.delimitedList(EXP) + pp.Optional(COMMA)))('items') + RPAREN
+        tupleExpr = LPAREN + (pp.Group(pp.Optional(EXP + COMMA)) | (EXP + COMMA + pp.delimitedList(EXP) + pp.Optional(COMMA)))('args') + RPAREN
         tupleExpr.setParseAction(TupleAction)
+        # dictExpr = LBRACE + pp.ZeroOrMore(EXP('key') + COLON + EXP('value')) + RBRACE
+        # dictExpr.setParseAction(DictAction)
         M = funcExpr | tupleExpr | baseExpr | LPAREN + EXP + RPAREN
-        indexExpr = M('variable') + pp.OneOrMore(pp.Suppress('[') + EXP + pp.Suppress(']'))('index')
+        indexExpr = M('variable') + pp.OneOrMore(LBRACK + EXP + RBRACK)('index')
         indexExpr.setParseAction(IndexAction)
         EXP <<= pp.infixNotation(indexExpr | M, optable2oplist(self.operators))
         self.expression = EXP
+        self.tupleExpr = tupleExpr
+        # self.dictExpr = dictExpr
         if enablePackrat:
             self.expression.enablePackrat()
         # EXP = mixedExpression(baseExpr, funcExpr, flag=True, opList=optable2oplist(self.operators))
+
+    @property
+    def nakeTupleExpr(self):
+        tupleExpr = (pp.Group(self.expression + COMMA) | (self.expression + COMMA + pp.delimitedList(self.expression) + pp.Optional(COMMA)))('args')
+        tupleExpr.setParseAction(TupleAction)
+        return tupleExpr
 
     def enableLambda(self, sep=pp.Suppress(':')):
         lambdaExpr = pp.Keyword('lambda') + pp.delimitedList(variable)('args') + sep + EXP('expression')

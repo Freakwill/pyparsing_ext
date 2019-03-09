@@ -6,6 +6,9 @@ import pyparsing_ext as ppx
 
 
 w = ppx.Wordx(lambda x: x in {'a', 'b', 'c', 'd'})
+print(w.parseString('abbcccdddde'))
+
+
 M = ppx.delimitedMatrix(w, ch1=' ', ch2=pp.Regex('\n+').leaveWhitespace())
 p = M.parseString('a b\nc d')
 print(p.asList())
