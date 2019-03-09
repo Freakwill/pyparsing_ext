@@ -1,5 +1,15 @@
 def f(x, y) {
 
 z= x+2*y;
+return z, z;
+}
+
+print f(3,3);
+
+def g(x, y) {
+
+z= x+2*y;
 return z;
 }
+
+print g(3,3);

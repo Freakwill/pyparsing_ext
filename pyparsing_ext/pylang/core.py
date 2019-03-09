@@ -31,6 +31,7 @@ class Calculator:
         self.context = context
         self.control = control
         self.maxloop = 5000
+        self.useBuiltins = False
 
     def __str__(self):
         return f'''
@@ -109,6 +110,8 @@ Context:
                 else:
                     return v(*args, **kwargs)
         else:
+            if self.useBuiltins:
+                return eval(t)(*args, **kwargs)
             raise NameError('Did not find %s' % t)
 
     def eval(self, parseResult):
@@ -182,7 +185,7 @@ class GrammarParser:
                 else:
                     funcExpr.append((function['token']('function') + LPAREN + pp.delimitedList(EXP)('args') + RPAREN).setParseAction(function['action']))
         funcExpr = pp.MatchFirst(funcExpr)
-        tupleExpr = LPAREN + (pp.Group(pp.Optional(EXP + COMMA)) | (EXP + COMMA + pp.delimitedList(EXP) + pp.Optional(COMMA)))('args') + RPAREN
+        tupleExpr = tupleExpression(EXP)('args')
         tupleExpr.setParseAction(TupleAction)
         # dictExpr = LBRACE + pp.ZeroOrMore(EXP('key') + COLON + EXP('value')) + RBRACE
         # dictExpr.setParseAction(DictAction)
@@ -199,7 +202,7 @@ class GrammarParser:
 
     @property
     def nakeTupleExpr(self):
-        tupleExpr = (pp.Group(self.expression + COMMA) | (self.expression + COMMA + pp.delimitedList(self.expression) + pp.Optional(COMMA)))('args')
+        tupleExpr = (self.expression + COMMA + pp.delimitedList(self.expression) + pp.Optional(COMMA) | pp.Group(self.expression + COMMA))('args')
         tupleExpr.setParseAction(TupleAction)
         return tupleExpr
 

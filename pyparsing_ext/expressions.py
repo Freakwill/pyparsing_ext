@@ -68,6 +68,14 @@ def delimitedMatrix(baseExpr=pp.Word(pp.alphanums), ch1=',', ch2=';'):
             ch2 = pp.Literal(ch2)
     return pp.delimitedList(pp.Group(pp.delimitedList(baseExpr, ch1.suppress())), ch2.suppress())
 
+def tupleExpression(baseExpr=pp.Word(pp.alphanums), lpar=LPAREN, rpar=RPAREN):
+    """Tuple Expression
+    
+    Some valid expression:
+    (1,), (), (), (1,2,3), (1,2,3,)
+    """
+    return lpar + ((baseExpr + COMMA + pp.delimitedList(baseExpr) + pp.Optional(COMMA)) | pp.Group(pp.Optional(baseExpr + COMMA))) + rpar
+
 
 # need to be improved
 class MixedExpression(pp.ParseElementEnhance):
@@ -194,3 +202,4 @@ def lambdaterm(variable=IDEN, lambdaKeyword='lambda'):
     t <<= pp.Suppress(lambdaKeyword) + pp.delimitedList(variable)('args') + (t | logicterm(constant=DIGIT, variable=IDEN, function=None))('term')
     t.setParseAction(LambdaAction)
     return t
+

@@ -52,7 +52,6 @@ WORD = pp.Word(pp.alphas, pp.alphas+'-')
 DOT = pp.Literal('.')
 STAR = pp.Literal('*')
 DASH = pp.Literal('\\')
-COMMA = pp.Literal(',')
 SLASH = pp.Literal('/')
 PM = pp.oneOf('+ -')
 _punctuation = '_[]<>%$^|{}*+/\\!~#?.:'
@@ -66,6 +65,7 @@ LBRACK = pp.Suppress('[')
 RBRACK = pp.Suppress(']')
 COLON = pp.Suppress(':')
 SEMICOLON = pp.Suppress(';')
+COMMA = pp.Suppress(',')
 
 # numbers
 INTEGER = pp.pyparsing_common.signed_integer

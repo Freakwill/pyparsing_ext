@@ -399,8 +399,20 @@ class TupleAction(IterableAction):
         return tuple(arg.eval(calculator) for arg in self.args)
 
     def __str__(self):
-        return tuple(str(arg.eval(calculator)) for arg in self.args)
+        if len(self.args)==1:
+            return '(%s,)' % str(self.args[0].eval(calculator))
+        else:
+            return '(%s)' % (', '.join(str(arg.eval(calculator)) for arg in self.args))
 
+class ListAction(IterableAction):
+    # action class for atomic term
+    function = 'list'
+
+    def eval(self, calculator):
+        return list(arg.eval(calculator) for arg in self.args)
+
+    def __str__(self):
+        return '[%s]' % (', '.join(str(arg.eval(calculator)) for arg in self.args))
 
 class SetAction(IterableAction):
     # action class for set
@@ -410,7 +422,10 @@ class SetAction(IterableAction):
         return set(arg.eval(calculator) for arg in self.args)
 
     def __str__(self):
-        return '{%s}' % (str(arg.eval(calculator)) for arg in self.args)
+        if len(self.args)==0:
+            return '{/}'
+        else:
+            return '{%s}' % (', '.join(str(arg.eval(calculator)) for arg in self.args))
 
 
 class DictAction(IterableAction):
@@ -571,10 +586,10 @@ class ReturnAction(ControlAction):
     names = ('arg', 'args')
     def execute(self, calculator):
         calculator.control = 'return'
-        if 'arg' in self:
-            calculator.retval = self.arg.eval(calculator)
-        else:
+        if isinstance(self.arg, TupleAction):
             calculator.retval = tuple(arg.eval(calculator) for arg in self.args)
+        else:
+            calculator.retval = self.arg[0].eval(calculator)
 
 class PassAction(CommandAction):
     pass

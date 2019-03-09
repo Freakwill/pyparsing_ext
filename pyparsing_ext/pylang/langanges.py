@@ -53,7 +53,7 @@ class ProgrammingGrammarParser(GrammarParser):
         passStatement.setParseAction(PassAction)
         printStatement = self.keywords['print']('keyword') + pp.delimitedList(expression)('args') + END
         printStatement.setParseAction(PrintAction)
-        returnStatement = self.keywords['return']('keyword') + (self.nakeTupleExpr('args') | self.expression('arg')) + END
+        returnStatement = self.keywords['return']('keyword') + (self.nakeTupleExpr | self.expression)('arg') + END
         returnStatement.setParseAction(ReturnAction)
 
         # atomicStatement = assignmentStatement | breakStatement | continueStatement | passStatement | printStatement | returnStatement
