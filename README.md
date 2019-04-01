@@ -56,12 +56,14 @@ Classes::
     BifixAction: action for bifix operators such as <x,y>
     ...
     
-How to define class
+How to define an 'Action' class, that is a wrapper of `ParseResults`
 ```python
+# inherit BaseAction directly
 class VarOpAction(BaseAction):
     # for operators with variables
     pass
-    
+
+# inherit a subclass of BaseAction
 class IndexOpAction(VarOpAction):
     # x[start:stop]
     names = ('slice', 'index')   # register the names of tokens
