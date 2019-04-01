@@ -55,6 +55,34 @@ Classes::
     BaseAction: Base Class of Actions
     BifixAction: action for bifix operators such as <x,y>
     ...
+    
+How to define class
+```python
+class VarOpAction(BaseAction):
+    # for operators with variables
+    pass
+    
+class IndexOpAction(VarOpAction):
+    # x[start:stop]
+    names = ('slice', 'index')   # register the names of tokens
+    def __init__(self, instring='', loc=0, tokens=[]):
+        # add names or handle with tokens advancedly
+        super(IndexOpAction, self).__init__(instring, loc, tokens)
+        if 'slice' in self:
+            slc = tokens.slice
+            self.start = slc.start if 'start' in slc else None
+            self.stop = slc.stop if 'stop' in slc else None
+            self.step = slc.step if 'step' in slc else None
+        else:
+            self.index = tokens.index
+
+    def eval(self, calculator):
+        # define eval method, define the semantics of the token
+        if 'slice' in self:
+            return slice(self.start.eval(calculator), self.stop.eval(calculator), self.step.eval(calculator))
+        else:
+            return self.index.eval(calculator)
+```
 
 
 Functions::
