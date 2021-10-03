@@ -14,7 +14,7 @@ z= x+d(y);
 return z;
 }
 
-print (-1 $+ -2) < 3; # 3 < 3 is False
+print (-1 $+ 2) < 3; # 3 < 3 is False
 
 
 def f(x,y=1) {

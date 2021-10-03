@@ -23,7 +23,7 @@ pydict = {'len':len, 'abs':abs, 'min':min, 'max':max,'str':str,'sum':sum, 'tuple
 smallDict.update(pydict)
 
 # language
-smallpyLanguage = ProgrammingLanguage(name="SmallPython", grammar=smallGrammar, calculator=Calculator(dict_=smallDict))
+smallpyLanguage = ProgrammingLanguage(name="SmallPython", grammar=smallGrammar, calculator=Calculator(dictionary=smallDict))
 smallpyLanguage.info = {
             'version': '0.0',
             'paths': [],
