@@ -266,24 +266,6 @@ class CharsNot(_Token):
         return self.strRepr
 
 
-class TestToken(_Token):
-    # test token
-    def __init__(self, test=None):
-        super(TestToken, self).__init__()
-        self.test = test
-        self.errmsg = "did not pass the test!"
-
-    def parseImpl(self, instring, loc=0, doActions=True):
-        if self.test is None:
-            return loc, []
-        elif self.test(instring, loc):
-            return loc, []
-        else:
-            raise _Exception(instring, loc, self.errmsg, self)
-
-    def __str__(self):
-        return 'this is a test'
-
 # functions returning Wordx
 def keyRange(start=None, end=None, key=ord, *arg, **kwargs):
     '''Range-like parser, more powerful then srange
@@ -317,24 +299,29 @@ def ordRange(start=None, end=None, *arg, **kwargs):
     return keyRange(start, end, key=ord, *arg, **kwargs)
 
 # parse natural languages based on ordRange
-def CJK(*arg, **kwargs):
-    # Chinese Japanese Korean
-    return ordRange(0x4E00, 0x9FD5, *arg, **kwargs)
+# def CJK(*arg, **kwargs):
+#     # Chinese Japanese Korean
+#     return ordRange(0x4E00, 0x9FD5, *arg, **kwargs)
 
-def chinese(*arg, **kwargs):
-    # chinese
-    return ordRange(start=0x4E00, end=0x9FA5, *arg, **kwargs)
+# def chinese(*arg, **kwargs):
+#     # chinese
+#     return ordRange(start=0x4E00, end=0x9FA5, *arg, **kwargs)
 
-def hiragana(*arg, **kwargs):
-    # japanese
-    return ordRange(0x3040, 0x309F, *arg, **kwargs)
+# def hiragana(*arg, **kwargs):
+#     # japanese
+#     return ordRange(0x3040, 0x309F, *arg, **kwargs)
 
-def katakana(*arg, **kwargs):
-    # japanese
-    return ordRange(0x30A0, 0x30FF, *arg, **kwargs)
+# def katakana(*arg, **kwargs):
+#     # japanese
+#     return ordRange(0x30A0, 0x30FF, *arg, **kwargs)
 
-def korean(*arg, **kwargs):
-    return ordRange(0x1100, 0x11FF, *arg, **kwargs)
+# def korean(*arg, **kwargs):
+#     return ordRange(0x1100, 0x11FF, *arg, **kwargs)
+#     
+
+# def pinyin(*arg, **kwargs):
+#     return ordRange(0x3100, 0x312F, *arg, **kwargs)
+
 
 def chrRange(start='', end=None, *arg, **kwargs):
     # return keyRange(start='', end=None, key=lambda x: x, *arg, **kwargs)
@@ -343,9 +330,6 @@ def chrRange(start='', end=None, *arg, **kwargs):
     else:
         func = lambda x: start <= x
     return Wordx(func, *arg, **kwargs)
-
-# def pinyin(*arg, **kwargs):
-#     return ordRange(0x3100, 0x312F, *arg, **kwargs)
 
 def keyRanges(ran, key=ord, *arg, **kwargs):
     '''Multi-range version of keyRange

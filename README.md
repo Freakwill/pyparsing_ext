@@ -55,7 +55,7 @@ Classes::
     BaseAction: Base Class of Actions
     BifixAction: action for bifix operators such as <x,y>
     ...
-    
+
 How to define an 'Action' class, that is a wrapper of `ParseResults`
 ```python
 # inherit BaseAction directly
@@ -168,3 +168,20 @@ In example2.py, we create a programming language, "Small Python".
 run `example2.py` for a complicated example, to parse a text file `test.spy`
 
 `example2.smallpy.cmdline()`  # in mode of command line
+
+
+
+
+
+## Log
+
+The following method in base class of actions may lead error! just delete it in the latest version
+
+```python
+    # def __getitem__(self, key):
+    #     if isinstance(key, int):
+    #         return self.tokens[key]
+    #     else:
+    #         return getattr(self.tokens, key)
+```
+

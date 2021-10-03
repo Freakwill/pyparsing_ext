@@ -64,39 +64,3 @@ def expand(pe, aslist = False):
             return x[0]
         else:
             return pp.MatchFirst(x)
-
-
-# def add(expr1, expr2=None):
-#     return lookahead(expr1, expr2) + lookahead(expr2)
-
-# def lookahead(expr, other=None):
-#     if other is None:
-#         if isatomic(expr):
-#             return expr
-#         elif isinstance(expr, pp.And):
-#             if expr.exprs:
-#                 xp = expr.exprs.pop(0)
-#                 if isatomic(xp):
-#                     expr = xp + lookahead(expr)
-#                 else:
-#                     expr = lookahead(xp, expr)
-#             return expr
-#         # elif isinstance(expr, pp.Each):
-#         #     if expr.exprs:
-#         #         xp = expr.exprs.pop(0)
-#         #         if isatomic(xp):
-#         #             expr = xp & lookahead(expr)
-#         #         else:
-#         #             expr = lookahead(xp, expr)
-#         #     return expr
-#         elif isinstance(expr, (pp.MatchFirst, pp.Or)):
-#             expr.exprs = [lookahead(xp) for xp in expr.exprs]
-#             return expr
-#         elif isinstance(expr1, _Enhance):
-#             expr.expr = lookahead(expr.expr)
-#             return expr
-#     else:
-#         if isatomic(expr):
-#             return expr + pp.FollowedBy(lookahead(other))
-#         return lookahead(expr + pp.FollowedBy(lookahead(other)))
-

@@ -78,12 +78,9 @@ def tupleExpression(baseExpr=pp.Word(pp.alphanums), lpar=LPAREN, rpar=RPAREN):
 
 
 def tableExpression(baseExpr=pp.Word(pp.alphanums), sep=COLON, lpar=LBRACE, rpar=RBRACE):
-    """Tuple Expression
-    
-    Some valid expression:
-    (1,), (), (), (1,2,3), (1,2,3,)
+    """Table Expression
     """
-    return lpar + pp.delimitedList(baseExpr + sep + baseExpr) + rpar
+    return lpar + pp.delimitedMatrix(baseExpr + sep + baseExpr) + rpar
 
 
 # need to be improved
