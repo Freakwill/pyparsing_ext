@@ -586,7 +586,8 @@ class LetAction(BaseAction):
 
 # actions for programming
 class CommandAction(BaseAction):
-    '''action for command such as assignment'''
+    '''action for command such as assignment
+    '''
 
     names = ('args',)
 
@@ -773,9 +774,10 @@ class WhileAction(IfAction):
 
 
 class IfelseAction(CommandAction):
-    '''action for if-elif-else statement'''
+    '''action for if-elif-else statement
+    '''
     def __init__(self, instring='', loc=0, tokens=[]):
-        super(IfelseAction, self).__init__(instring, loc, tokens)
+        super().__init__(instring, loc, tokens)
         self.conditions = tokens.conditions[:]
         self.programs = tokens.programs[:]
         if 'elseprogram' in tokens:
@@ -865,11 +867,20 @@ class DefAction(CommandAction):
 
     def __repr__(self):
         if 'function' in self:
-            return 'def %s(%s) {%s}'%(self.function, ', '.join(map(str, self.parameters)), self.program)
+            return 'DEFINE %s(%s) {%s}'%(self.function, ', '.join(map(str, self.parameters)), self.program)
         elif 'operator' in self:
-            return 'def %s %s %s {%s}'%(self.parameters[0], self.function, self.parameters[1], self.program)
+            return 'DEFINE %s %s %s {%s}'%(self.parameters[0], self.function, self.parameters[1], self.program)
         else:
-            return 'def %s(%s)%s {%s}'%(self.function[0], ', '.join(map(str, self.parameters)), self.function[1], self.program)
+            return 'DEFINE %s(%s)%s {%s}'%(self.function[0], ', '.join(map(str, self.parameters)), self.function[1], self.program)
+
+
+    def __str__(self):
+        if 'function' in self:
+            return '%s: %s ->{%s}'%(self.function, ', '.join(map(str, self.parameters)), self.program)
+        elif 'operator' in self:
+            return '%s %s %s -> {%s}'%(self.parameters[0], self.function, self.parameters[1], self.program)
+        else:
+            return '%s(%s)%s -> {%s}'%(self.function[0], ', '.join(map(str, self.parameters)), self.function[1], self.program)
 
 
 class ParameterAction(BaseAction):
@@ -899,7 +910,9 @@ class ParameterAction(BaseAction):
 
 
 class ProgramSequenceAction(CommandAction):
-    '''action for program; program; program...'''
+    '''action for a sequence of programs:
+    program; program; program...
+    '''
     def __init__(self, instring='', loc=0, tokens=[]):
         super().__init__(instring, loc, tokens)
         self.program = tokens[:]

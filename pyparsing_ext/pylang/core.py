@@ -15,67 +15,96 @@ import pyparsing as pp
 
 from pyparsing_ext import *
 
-# Languages
-class Calculator:
-    """Semantic calculator
-    """
+class Memory(dict):
+    pass
 
-    def __init__(self, dict_={}, context={}, control=None):
+# Languages
+
+
+class BaseCalculator:
+    """Base class for semantic calculator
+
+    A semantic calculator could evaluate constants and variables in the language
+    """
+    def __init__(self, dictionary={}, context={}):
         """
         Keyword Arguments:
-            dict_ {dict} -- semantic dictionary, interpretation of contexts (default: {{}})
+            dictionary {dict} -- semantic dictionary, interpretation of contexts (default: {{}})
             context {dict} -- evaluation of variables (default: {{}})
-            control {[type]} -- control information (default: {None})
         """
-        self.dict_ = dict_
+        self.dictionary = dictionary
         self.context = context
-        self.control = control
-        self.maxloop = 5000
-        self.useBuiltins = False
 
-    def __str__(self):
-        return f'''
-Dictionary: 
-    {self.dict_}
-Context: 
-    {self.context}'''
-
-    def copy(self):
-        return Calculator(self.dict_, self.context.copy(), self.control)
+        def __str__(self):
+            return f"""
+    Dictionary: 
+        {self.dictionary}
+    Context: 
+        {self.context}"""
 
     def reset(self):
         self.context = {}
-        self.control = None
+
+    def __getitem__(self, x):
+        if x in self.dictionary:
+            return self.dictionary[x]
+        elif x in self.context:
+            return self.context[x]
+        else:
+            raise NameError('I did not find `%s` in the dictionaries, you may not define it in advance.' % x)
+
+    def __setitem__(self, x, v):
+        if x in self.dictionary:
+            raise Exception(f'{x} is a constant, whose value could not be changed!')
+        self.context[x] = v
 
     def update(self, x_v):
         self.context.update(x_v)
 
-    def __getitem__(self, x):
-        if x in self.context:
-            return self.context[x]
-        elif x in self.dict_:
-            return self.dict_[x]
-        else:
-            raise NameError('Did not find %s' % x)
-
-    def __setitem__(self, x, v):
-        self.context[x] = v
+    def copy(self):
+        return self.__class__(self.dictionary, self.context.copy())
 
     def __enter__(self):
-        return copy.deepcopy(self)
+        return self.copy()
 
     def __exit__(self, *args, **kwargs):
         return True
 
+
+class StandardCalculator(BaseCalculator):
+    """Semantic calculator with control information
+
+    Inherite this class to define the semantics of programming language
+    """
+
+    def __init__(self, dictionary={}, context={}, control=None):
+        """
+        Keyword Arguments:
+            dictionary {dict} -- semantic dictionary, interpretation of contexts (default: {{}})
+            context {dict} -- evaluation of variables (default: {{}})
+            control {[type]} -- control information (default: {None})
+        """
+        super().__init__(dictionary, context)
+        self.control = control
+        self.maxloop = 5000
+        self.useBuiltins = False
+
+    def copy(self):
+        return self.__class__(self.dictionary, self.context.copy(), self.control)
+
+    def reset(self):
+        super().reset()
+        self.control = None
+
     def __call__(self, t, *args, **kwargs):
-        """Get the value of c
+        """Get the value of t
         
         Arguments:
             t {str} -- term
             *args {} -- parameters
         
         Returns:
-            [type] -- [description]
+            value of t
         
         Raises:
             Exception -- [description]
@@ -94,8 +123,8 @@ Context:
                         raise Exception('Notice the arity!')
                 else:
                     return v(*args, **kwargs)
-        elif t in self.dict_:
-            v = self.dict_[t]
+        elif t in self.dictionary:
+            v = self.dictionary[t]
             if arity == 0:
                 if isinstance(v, dict):
                     return v[2]
@@ -121,15 +150,48 @@ Context:
         pass
 
     def __setstate__(self, state):
-        self.dict_, self.context, self.control = state['dict_'], state['context'], state['control']
+        self.dictionary, self.context, self.control = state['dictionary'], state['context'], state['control']
+
+    def __getstate__(self):
+        return {'dictionary': self.dictionary, 'context': self.context, 'control': self. control}
 
 
-class GrammarParser:
-    '''Grammar Parser
-    parse a string to a tree-like structure (wrapped by Actions)
+def _token(s):
+    return pp.Literal(s) if isinstance(s, str) else s
+
+class BaseParser:
+    """ Base class for syntax parser
+    
+    Users must define `make` in subclass
+    """
+    expression = None
+
+    def make(self, *args, **kwargs):
+        raise NotImplementedError('define method `make` to create a parser based on pyparsing')
+    
+    def parse(self, s):
+        if self.expression is None:
+            self.make()
+        return self.expression.parseString(s)[0]
+
+    def matches(self, s):
+        if self.expression is None:
+            self.make()
+        return self.expression.matches(s)
+
+    def parseFile(self, filename):
+        with open(filename, 'r') as fo:
+            return self.parse(fo.read())
+
+    def kill(self):
+        self.expression = None
+
+
+class StandardParser(BaseParser):
+    '''Standard class for Syntax Parser
     '''
     def __init__(self, keywords={}, constants=[], variables=[], functions=None, operators=[]):
-        '''
+        '''Create Syntax Parser
         
         Arguments:
             keywords {dict of tokens} -- set of keywords
@@ -149,7 +211,7 @@ class GrammarParser:
             self.functions = functions
         self.operators = operators
 
-    def make_parser(self, enablePackrat=True):
+    def make(self, enablePackrat=True):
         self.constant = pp.MatchFirst([constant['token'].setParseAction(constant.get('action', ConstantAction)) for constant in self.constants])
         if self.variables:
             self.variable = pp.MatchFirst([variable['token'].setParseAction(variable.get('action', VariableAction)) for variable in self.variables])
@@ -165,8 +227,7 @@ class GrammarParser:
         for function in self.functions:
             if isinstance(function['token'], tuple) and len(function['token'])==2:
                 # bifixNotation
-                left = pp.Literal(function['token'][0]) if isinstance(function['token'][0], str) else function['token'][0]
-                right = pp.Literal(function['token'][1]) if isinstance(function['token'][1], str) else function['token'][0]
+                left, right = _token(function['token'][0]), _token(function['token'][1])
                 if 'arity' in function:
                     if function['arity'] == 1:
                         funcExpr.append((left('left') + EXP('arg') +right('right')).setParseAction(function['action']))
@@ -185,10 +246,12 @@ class GrammarParser:
                 else:
                     funcExpr.append((function['token']('function') + LPAREN + pp.delimitedList(EXP)('args') + RPAREN).setParseAction(function['action']))
         funcExpr = pp.MatchFirst(funcExpr)
+
         tupleExpr = tupleExpression(EXP)('args')
         tupleExpr.setParseAction(TupleAction)
         # dictExpr = LBRACE + pp.ZeroOrMore(EXP('key') + COLON + EXP('value')) + RBRACE
         # dictExpr.setParseAction(DictAction)
+    
         M = funcExpr | tupleExpr | baseExpr | LPAREN + EXP + RPAREN
         indexExpr = M('variable') + pp.OneOrMore(LBRACK + EXP + RBRACK)('index')
         indexExpr.setParseAction(IndexAction)
@@ -216,49 +279,34 @@ class GrammarParser:
         self.functions.append({'token':letExpr, 'action':LetAction})
         return self
 
-    def matches(self, s):
-        if not hasattr(self, 'expression'):
-            self.make_parser()
-        return self.expression.matches(s)
-
-    def parse(self, s):
-        if not hasattr(self, 'expression'):
-            self.make_parser()
-        return self.expression.parseString(s)[0]
-
-    def parseFile(self, filename):
-        with open(filename, 'r') as fo:
-            return self.parse(fo.read())
-
-    def del_parser(self):
-        del self.expression
-
     def __setstate__(self, state):
         self.keywords, self.constants, self.variables, self.functions, self.operators =\
          state['keywords'], state['constants'], state['variables'], state['functions'], state['operators']
 
 
 class Language:
-    '''Language'''
-    def __init__(self, name='Toy', grammar=None, calculator=None):
+    '''Language
+    a language contains two parts syntax parser and semantic calculator
+    '''
+    def __init__(self, name='Toy', parser=None, calculator=None):
         self.name = name
-        self.grammar = grammar
+        self.parser = parser
         self.calculator = calculator
 
     def __str__(self):
         return 'Language <%s>' % self.name
 
     def make_parser(self):
-        self.grammar.make_parser()
+        self.parser.make()
 
     def matches(self, s):
-        return self.grammar.matches(s)
+        return self.parser.matches(s)
 
     def parse(self, s):
-        return self.grammar.parse(s)
+        return self.parser.parse(s)
 
     def parseFile(self, filename):
-        return self.grammar.parseFile(filename)
+        return self.parser.parseFile(filename)
 
     def eval(self, s):
         return self.parse(s).eval(calculator=self.calculator)
@@ -267,4 +315,4 @@ class Language:
         return self.eval(s)
 
     def __setstate__(self, state):
-        self.name, self.grammar, self.calculator = state['name'], state['grammar'], state['calculator']
+        self.name, self.parser, self.calculator = state['name'], state['parser'], state['calculator']

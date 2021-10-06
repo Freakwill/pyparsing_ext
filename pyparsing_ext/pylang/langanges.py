@@ -13,7 +13,7 @@ logicOpTable = [{'token':'~', 'arity':1, 'action':UnaryOperatorAction}, {'token'
 arithDict = {'True':True, 'False':False, '+': {1:operator.pos, 2:operator.add}, '*': operator.mul, '-':{1:operator.neg, 2:operator.sub}, '/':operator.truediv, '^':operator.pow, '==':operator.eq, '!=':operator.ne, '<':operator.lt, '>':operator.gt, '<=':operator.le, '>=':operator.ge}
 
 
-class LogicGrammarParser(GrammarParser):
+class LogicSyntaxParser(StandardParser):
     # Grammar of Logic Language
     def __init__(self, constants=[{'token':NUMBER, 'action':NumberAction}, {'token':pp.quotedString, 'action':StringAction}],
         variables=[{'token':IDEN, 'action':VariableAction}], quantifier=pp.Keyword('forall') | pp.Keyword('exist')):
@@ -21,25 +21,24 @@ class LogicGrammarParser(GrammarParser):
         operators = arithOpTable \
         + [{'token':quantifier('quantifier') + pp.delimitedList(variable)('variables'), 'arity':1, 'action':QuantifierAction}] \
         + logicOpTable
-        grammar = GrammarParser(constants, variables, functions=[], operators=operators)
-        super(LogicLanguage, self).__init__(grammar)
+        super().__init__(constants, variables, functions=[], operators=operators)
         self.quantifier = quantifier
+
 
 commonKeywords = {'if':pp.Keyword('if'), 'elif':pp.Keyword('elif'), 'else':pp.Keyword('else'), 'while':pp.Keyword('while'), 'break':pp.Keyword('break'), 'continue':pp.Keyword('continue'), 'return':pp.Keyword('return'), 'pass':pp.Keyword('pass'), 'def':pp.Keyword('def'), 'print':pp.Keyword('print')}
 
 
-class ProgrammingGrammarParser(GrammarParser):
-    '''programming Language
+class ProgrammingParser(StandardParser):
+    '''parser for programming Language
     '''
 
-    def make_parser(self, *args, **kwargs):
-        super(ProgrammingGrammarParser, self).make_parser(*args, **kwargs)
+    def make(self, *args, **kwargs):
+        super().make(*args, **kwargs)
         variable = self.variable
         expression = self.expression
         # parser for program
         END = SEMICOLON | pp.LineEnd()
-        self.program = pp.Forward()
-        programWithControl = pp.Forward()
+        program = pp.Forward()
         expressionStatement = expression + END
         assignmentStatement = variable('variable') + pp.Suppress('=') + (self.nakeTupleExpr('args') | self.expression('arg')) + pp.Optional(':' + IDEN('type')) + END
         assignmentStatement.setParseAction(AssignmentAction)
@@ -59,34 +58,33 @@ class ProgrammingGrammarParser(GrammarParser):
         # atomicStatement = assignmentStatement | breakStatement | continueStatement | passStatement | printStatement | returnStatement
         # block = atomicStatement | LBRACE + self.program + RBRACE
 
-        ifStatement = self.keywords['if']('keyword') + expression('condition') + LBRACE + self.program('program') + RBRACE
+        ifStatement = self.keywords['if']('keyword') + expression('condition') + LBRACE + program('program') + RBRACE
         ifStatement.setParseAction(IfAction)
-        ifStatementWithControl = self.keywords['if']('keyword') + expression('condition') + LBRACE + programWithControl('program') + RBRACE
-        ifStatementWithControl.setParseAction(IfAction)
         # if condition {program} pp.ZeroOrMore(elif condition {program}) else {program}
         # IfelseAction
-        whileStatement = self.keywords['while']('keyword') + expression('condition') + LBRACE + programWithControl('program') + RBRACE
+        whileStatement = self.keywords['while']('keyword') + expression('condition') + LBRACE + program('program') + RBRACE
         whileStatement.setParseAction(WhileAction)
 
-        ARG = variable('name') + pp.Optional(pp.Suppress('=') + expression('default'))
-        ARG.setParseAction(ArgumentAction)
-        defStatement = self.keywords['def']('keyword') + (variable('function') + LPAREN + pp.delimitedList(ARG)('args') + RPAREN
-          | PUNC('left') + pp.delimitedList(ARG)('args') + PUNC('right')
-          | ARG('arg1') + PUNC('operator') + ARG('arg2')) + LBRACE + self.program('program') + RBRACE
+        PARAM = variable('name') + pp.Optional(pp.Suppress('=') + expression('default'))
+        PARAM.setParseAction(ParameterAction)
+        defStatement = self.keywords['def']('keyword') + (variable('function') + LPAREN + pp.delimitedList(PARAM)('parameters') + RPAREN
+          | PUNC('left') + pp.delimitedList(PARAM)('parameters') + PUNC('right')
+          | PARAM('parameter1') + PUNC('operator') + PARAM('parameter2')) + LBRACE + program('program') + RBRACE
         defStatement.setParseAction(DefAction)
-        self.statements = [ifStatement, whileStatement, defStatement, returnStatement, passStatement, printStatement, assignmentStatement, expressionStatement, LBRACE + self.program + RBRACE]
+
+        self.statements = [ifStatement, whileStatement, defStatement, returnStatement, passStatement, printStatement, assignmentStatement,
+        breakStatement, continueStatement, expressionStatement, LBRACE + program + RBRACE]
+
         statement = pp.MatchFirst(self.statements)
-        controlStatements = [breakStatement, continueStatement, ifStatementWithControl, LBRACE + programWithControl + RBRACE]
-        statementWithControl = pp.MatchFirst(self.statements + controlStatements)
-        programWithControl <<= pp.OneOrMore(statementWithControl).setParseAction(ProgramSequenceAction)
+        program <<= pp.OneOrMore(statement).setParseAction(ProgramSequenceAction)
         loadStatement = pp.Keyword('load')('keyword').suppress() + pp.restOfLine('path')
-        self.program <<= pp.ZeroOrMore(loadStatement)('loading') + pp.OneOrMore(statement).setParseAction(ProgramSequenceAction)
+        self.program = pp.ZeroOrMore(loadStatement)('loading') + program
         self.comment = pp.pythonStyleComment
         self.program.ignore(self.comment)
 
     def setComment(self, commentStyle='Python'):
         if not hasattr(self, 'program'):
-            self.make_parser()
+            self.make()
         if self.comment in self.program.ignoreExprs:
             self.program.ignoreExprs.remove(self.comment)
         if commentStyle in {'Python', 'python'}:
@@ -104,7 +102,7 @@ class ProgrammingGrammarParser(GrammarParser):
 
     def parse(self, s):
         if not hasattr(self, 'program'):
-            self.make_parser()
+            self.make()
         try:
             return self.program.parseString(s, parseAll=True)[0]
         except pp.ParseException as pe:
@@ -115,7 +113,7 @@ class ProgrammingLanguage(Language):
     '''programming Language
     '''
     def __init__(self, name='Toy', *args, **kwargs):
-        super(ProgrammingLanguage, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.info = {
             'version': '0.0',
@@ -123,14 +121,14 @@ class ProgrammingLanguage(Language):
             'suffix': '.toy'
         }
 
-    def make(self):
-        grammar = ProgrammingGrammarParser()
-        calculator = None
-        return ProgrammingLanguage(name=name, grammar=grammar, calculator=calculator)
+    # def make(self):
+    #     grammar = ProgrammingParser()
+    #     calculator = None
+    #     return ProgrammingLanguage(name=name, grammar=grammar, calculator=calculator)
 
     def execute(self, s):
         ret = self.parse(s)
-        if 'loading' in ret:
+        if ret and 'loading' in ret:
             for path in ret.loading:
                 self.executeFile(path.strip())
         ret.execute(self.calculator)

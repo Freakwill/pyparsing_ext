@@ -3,7 +3,7 @@
 
 import pyparsing as pp
 
-from pyparsing_ext.core import *
+from pyparsing_ext import *
 from pyparsing_ext.actions import *
 
 
