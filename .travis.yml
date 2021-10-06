@@ -2,15 +2,18 @@ language: python
 python:
 - '3.8'
 - '3.7'
+
 install:
 - pip install -r requirements.txt
+
 script: python test.py
+
 deploy:
   provider: pypi
   user: goodspeed
   password:
     secure: BvGPW1HLnrxtyQcd5uoX277T4waFziE/m8Hpmc9BiSckVgAbzSihr0POWTP88V+jf63PCw5nsrpuUuZsbNCXveK8TGDFGiZ7r0jp1RUrM8kfBxrp0FwKRjD9VzHqLBDOAky6HeoA8UIBJdTie7YPQeF3GjH/QL+i3OIgqr8Zswo6eKXOxlxMohGVXI4i7GIXIr0JMwsjI14Bsk+E2yP7hRYyzzsMrjw/3OzunXSeuUmNk5gby2aUke90JGN6aTXsa0nmw0+th9Ge7nJZXthVW/9/7zwn6FJx9jbf0hRLqlKH8IcIlq1Jh4SPYYfXwLtuZukz/LFv/xEUhN4SguXQZvYbIpzguXbw+thnxr6XvRp8pqnmUPwCcBuVu3paTs5IcLyGIAPqeDLt3E11UtrjyAyH995jHCfmORhDjsfFb8na6ubyqNIcaCT6FmlISkDkkhwc9KMhMsrVSO/4aK/TEaspme4DX6GmupcNgfZV6yO76Mk8XWzmWtQ5VCK5Z7cywBIbCKBsd4HcCMMV7T7zE1baBLHAMkl1bOiCyPNKkDE9ef7ySBbqtulF06Tp3FQTtnH4XYX4mIl5uBYE0GR8UCEbqirXlxuz+4XnYnZzRE8GU375t6BZYtZJRoUQQqrxqRDK7KXRhZfhr0s2IVrm8Wy+ZAIFIYqzxDLvLraG7yo=
-  true:
+  on:
     python: 3.8
     tags: true
     branch: master
